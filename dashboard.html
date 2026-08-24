@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Cobrança</title>
+    <link rel="icon" type="image/jpeg" href="./favicon.jpg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2 class="logo-title-small">Cobrança</h2>
+                <button id="toggleSidebarBtn" class="icon-btn" title="Recolher/Expandir Menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="user-profile-small">
+                <div class="avatar-circle" id="sidebarAvatar">U</div>
+                <div class="user-info">
+                    <span class="user-name" id="sidebarUserName">Usuário</span>
+                    <span class="user-role" id="sidebarUserRole">Role</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#tarefas" class="nav-item active" data-view="tarefas">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Tarefas</span>
+                </a>
+                <a href="#kanban" class="nav-item" data-view="kanban">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                    <span>Kanban</span>
+                </a>
+                <a href="#relatorios" class="nav-item" data-view="relatorios">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Relatórios</span>
+                </a>
+
+                <div class="nav-group">
+                    <a href="#usuarios" class="nav-item" data-view="usuarios" id="navUsuarios" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>Usuários</span>
+                    </a>
+                    <a href="#configuracoes" class="nav-item" data-view="configuracoes">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg>
+                        <span>Configurações</span>
+                    </a>
+                    <!-- Submenu for admin will be injected by JS or shown via CSS class -->
+                    <div class="nav-submenu hidden" id="adminSubmenu">
+                        <a href="#permissoes" class="nav-item sub-item" data-view="permissoes">Permissões de
+                            Usuários</a>
+                        <a href="#lixeira" class="nav-item sub-item danger-text" data-view="lixeira"
+                            style="color: #ef4444;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" style="margin-right:5px; vertical-align:middle;">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                            Lixeira (Admin)
+                        </a>
+                    </div>
+                </div>
+
+                <a href="#ajuda" class="nav-item" data-view="ajuda">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>Ajuda</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="themeToggleBtnSidebar" class="icon-btn theme-toggle" title="Tema">
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="logoutBtn" class="icon-btn danger-text" title="Sair">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header for mobile / breadcrumbs -->
+            <header class="top-header">
+                <button id="mobileMenuBtn" class="icon-btn mobile-only">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <h2 id="currentViewTitle">Tarefas</h2>
+            </header>
+
+            <!-- Views Container -->
+            <div id="viewContainer" class="view-container">
+                <!-- Vistas serão injetadas via JS aqui -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <!-- Add User Modal -->
+        <div id="createUserModal" class="modal hidden">
+            <div class="modal-header">
+                <h3>Novo Usuário</h3>
+                <button class="close-modal icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="formCreateUser">
+                    <div class="input-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="newUserName" required style="width: 100%;">
+                    </div>
+                    <div class="input-group">
+                        <label>E-mail</label>
+                        <input type="email" id="newUserEmail" required style="width: 100%;">
+                    </div>
+                    <div class="input-group">
+                        <label>Senha</label>
+                        <input type="password" id="newUserPassword" required style="width: 100%;">
+                    </div>
+                    <div class="input-group">
+                        <label>Perfil</label>
+                        <select id="newUserRole"
+                            style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); background: var(--bg-body); border-radius: var(--radius-sm); color: var(--text-main);">
+                            <option value="user">Usuário Padrão</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal">Cancelar</button>
+                <button class="btn-primary" onclick="saveUser()">Cadastrar</button>
+            </div>
+        </div>
+
+        <!-- Add Task Modal -->
+        <div id="createTaskModal" class="modal hidden">
+            <div class="modal-header">
+                <h3>Criar Tarefas (Condado)</h3>
+                <button class="close-modal icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc" style="margin-bottom: 1rem;">Pesquise por clientes ou condomínios na base externa:
+                </p>
+                <div class="flex-between" style="margin-bottom: 1.5rem; gap: 1rem;">
+                    <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                        <input type="text" id="searchCondadoInput" placeholder="Nome, código ou condomínio..."
+                            style="width: 100%;">
+                    </div>
+                    <button class="btn-primary" id="btnSearchCondado">Pesquisar</button>
+                </div>
+
+                <div id="condadoDataContainer" class="condado-list">
+                    <!-- Data will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal">Cancelar</button>
+                <button class="btn-primary" id="btnDistributeTasks">Distribuir Selecionados</button>
+            </div>
+        </div>
+
+        <!-- Distribute Tasks Modal -->
+        <div id="distributeTasksModal" class="modal hidden">
+            <div class="modal-header">
+                <h3>Distribuir Tarefas</h3>
+                <button class="close-modal icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Selecione o usuário que receberá as tarefas selecionadas:</p>
+                <div class="input-group">
+                    <label for="assignToUser">Atribuir para:</label>
+                    <select id="assignToUser"
+                        style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background-color: var(--bg-body); color: var(--text-main);">
+                        <option value="">Carregando usuários...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal">Cancelar</button>
+                <button class="btn-primary" id="btnConfirmDistribute">Confirmar Distribuição</button>
+            </div>
+        </div>
+
+        <!-- Task Details Modal -->
+        <div id="taskDetailsModal" class="modal modal-lg hidden">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h3 id="taskModalTitle">Detalhes da Tarefa</h3>
+                    <button class="icon-btn danger-text" id="btnDeleteTask" title="Mover para Lixeira"
+                        style="padding: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                <button class="close-modal icon-btn">&times;</button>
+            </div>
+            <div class="modal-body task-details-layout">
+                <!-- Left Column (Main content) -->
+                <div class="task-main-col">
+                    <div id="taskDetailsContent" class="task-info-block">
+                        <!-- Injected JS (Imóvel, Cliente, Valor) -->
+                    </div>
+
+                    <div class="task-section">
+                        <h4>Observações</h4>
+                        <textarea class="form-control" rows="3"
+                            placeholder="Adicione notas ou observações sobre o cliente..."
+                            style="width: 100%;"></textarea>
+                    </div>
+
+                    <div class="task-section">
+                        <h4>Checklist</h4>
+                        <div class="progress-bar-container"
+                            style="background: var(--border); height: 8px; border-radius: 4px; margin-bottom: 10px; overflow: hidden;">
+                            <div id="checklistProgress"
+                                style="width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease;">
+                            </div>
+                        </div>
+                        <div class="checklist-items" id="checklistContainer">
+                            <label class="checklist-item"><input type="checkbox" onchange="updateChecklistProgress()">
+                                Verificar documentos do imóvel</label>
+                            <label class="checklist-item"><input type="checkbox" onchange="updateChecklistProgress()">
+                                Entrar em contato com o cliente</label>
+                            <label class="checklist-item"><input type="checkbox" onchange="updateChecklistProgress()">
+                                Emitir boleto de cobrança</label>
+                        </div>
+                        <div class="add-checklist flex-between" style="margin-top: 10px; gap: 10px;">
+                            <input type="text" id="newChecklistItem" placeholder="Novo item..." class="form-control"
+                                style="flex:1;">
+                            <button class="btn-secondary" id="btnAddChecklist">Adicionar</button>
+                        </div>
+                    </div>
+
+                    <div class="task-section">
+                        <h4>Descrição das Atividades (Atendimento)</h4>
+                        <div class="task-update-form" style="display: flex; flex-direction: column; gap: 10px;">
+                            <textarea id="taskUpdateText" class="form-control" rows="3"
+                                placeholder="O que foi feito no atendimento?"></textarea>
+                            <button id="btnSaveUpdate" class="btn-primary" style="align-self: flex-end;">Registrar
+                                Atendimento</button>
+                        </div>
+                        <div id="taskUpdatesList" class="updates-list">
+                            <!-- Updates injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Registro de Atividades movido para cá -->
+                    <div class="task-section">
+                        <h4>Registro de Atividades</h4>
+                        <div
+                            style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.02); padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                            <ul id="activityLog" class="activity-log-list">
+                                <li><strong>Sistema:</strong> Tarefa criada <span
+                                        style="font-size: 0.7rem; color: var(--text-muted)">(Hoje, 09:00)</span></li>
+                                <li><strong>Sistema:</strong> Movido para 'Atendendo' <span
+                                        style="font-size: 0.7rem; color: var(--text-muted)">(Hoje, 10:30)</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column (Sidebar details) -->
+                <div class="task-side-col">
+                    <div class="task-meta-block">
+                        <h5>Etiquetas</h5>
+                        <div class="labels-container" id="labelsContainer">
+                            <span class="label" style="background-color: #EF4444;"
+                                onclick="this.remove(); logActivity('Etiqueta removida: Urgente')">Urgente
+                                &times;</span>
+                            <span class="label" style="background-color: #F59E0B;"
+                                onclick="this.remove(); logActivity('Etiqueta removida: Revisão')">Revisão
+                                &times;</span>
+                            <span class="label" style="background-color: #3B82F6;"
+                                onclick="this.remove(); logActivity('Etiqueta removida: Documentação')">Documentação
+                                &times;</span>
+                        </div>
+                        <button class="btn-secondary btn-sm" id="btnAddLabel" style="width:100%; margin-top:10px;">+
+                            Adicionar Etiqueta</button>
+                    </div>
+
+                    <div class="task-meta-block">
+                        <h5>Datas</h5>
+                        <div class="date-row">
+                            <label>Início</label>
+                            <input type="date" class="form-control form-sm">
+                        </div>
+                        <div class="date-row">
+                            <label>Fim (Prazo)</label>
+                            <input type="date" class="form-control form-sm">
+                        </div>
+                    </div>
+
+                    <div class="task-meta-block" id="taskShareBlock">
+                        <h5>Atribuir / Compartilhar</h5>
+                        <div id="assignUserContainer">
+                            <!-- Será injetado pelo openTaskDetails -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/theme.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

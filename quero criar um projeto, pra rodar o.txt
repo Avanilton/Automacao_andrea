@@ -1,0 +1,26 @@
+quero criar um projeto, pra rodar online, mas ele precisa basicamante rodar em html, pois vou colocar no subdominio do cpanel, ou seja, vou subir todos os arquivos desse projeto no cpanel, esse projeto precisa fazer o seguinte
+
+1 - multi usuário, onde cada usuario após fazer login, verá apenas o que for direcionado pra ele
+2 - tem que ser uma interface responsiva e amigável
+3 - uma landing page inicial, limpa apenas com o título do  sistema (Cobrança Task)
+4 - menu lateral com as seguintes telas
+  * Tarefas
+  * kanban
+  * Relatórios
+  * configurações (dados do perfil, definir avatar, trocar senha, para o adm um submenu nessa tela para definir as permissões)
+  * Ajuda
+5 - no cadastro de usuários, o user administrador terá acesso a tudo
+
+FUNCIONAMENTO DO APP:
+1 - na tela inicial (tarefas), do administrador deve aparecer um botão "Criar tarefas", que vai acessar a API do condado, os dados estarão no arquivo condadoapi.txt, quando ela clicar nesse botão, um bot/automação, vai trazer os seguintes dados (Nome do imóvel, código cliente, valor) ela precisa selecionar o condomínio, uma data  e o cliente/condômino
+2 - depois que ela selecionar e trouxer os dados, ela vai clicar em um botão "Distribuir", onde vai trazer os usuários cadastrados para ela distribuir
+3 - depois que ela distribuir, cada usuario vai receber na sua tela inicial (Tarefas) para começar a trabalhar nesses dados, eles vão abrir o formulário da tarefa, e anotar no campo "Atendimento" um texto para colocar o que foi feito
+4 - cada tarefa, gera um quadro no kanban "A fazer", quando a pessoa começa a trabalhar na tarefa, o card muda para "Atendendo" depois de finalizar, muda automaticamente para "Finalizado", mas eles podem mudar manualmente tbem
+5 - nos cards do kanban, deve ter opção de etiquetas com cores, data de inicio e fim, checklist ,descrição das atividades feitas, campo para observações, compartilhar com outros usuários
+
+BANCO DE DADOS
+1 - Crie a estrutura do banco  de dados para mim
+2 - o banco será o phpmyadmin dentro do cpanel, vai se chamar "cobrancatask"
+
+
+por enquanto é isso, depois faremos mais alterações
