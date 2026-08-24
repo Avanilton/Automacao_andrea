@@ -5,8 +5,7 @@ session_start();
 
 // Verifica se está logado e é admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    // Para desenvolvimento, deixaremos passar. Em produção:
-    // jsonResponse(['error' => 'Acesso negado'], 403);
+    jsonResponse(['error' => 'Acesso negado'], 403);
 }
 
 $action = $_GET['action'] ?? 'fetch_data';
@@ -45,38 +44,10 @@ if ($action === 'fetch_data') {
         jsonResponse(['success' => true, 'data' => $data]);
         
     } catch (PDOException $e) {
-        // Fallback para mock data caso a conexão ou tabela falhe durante o desenvolvimento
-        $mockData = [
-            [
-                'property_name' => 'Cond. Bela Vista',
-                'client_code' => '1001',
-                'client_name' => 'João Silva (Mock)',
-                'value' => 450.00
-            ],
-            [
-                'property_name' => 'Cond. Sol Nascente',
-                'client_code' => '1002',
-                'client_name' => 'Maria Oliveira (Mock)',
-                'value' => 380.00
-            ]
-        ];
-        
-        // Filtra o mock data se houver pesquisa
-        if (!empty($search)) {
-            $mockData = array_filter($mockData, function($item) use ($search) {
-                $s = strtolower($search);
-                return strpos(strtolower($item['property_name']), $s) !== false || 
-                       strpos(strtolower($item['client_name']), $s) !== false ||
-                       strpos(strtolower($item['client_code']), $s) !== false;
-            });
-            $mockData = array_values($mockData);
-        }
-        
         jsonResponse([
-            'success' => true, 
-            'data' => $mockData, 
-            'warning' => 'Tabela real inacessível. Usando dados falsos (Mock). Erro: ' . $e->getMessage()
-        ]);
+            'success' => false, 
+            'error' => 'Falha ao conectar no banco do Condado: ' . $e->getMessage()
+        ], 500);
     }
 }
 

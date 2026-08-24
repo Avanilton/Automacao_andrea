@@ -61,18 +61,4 @@ CREATE TABLE IF NOT EXISTS `task_shares` (
 INSERT IGNORE INTO `users` (`name`, `email`, `password`, `role`) VALUES
 ('Administrador', 'admin@cobrancatask.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
 
--- Tabela Mock para o Condado (Testes Locais)
-CREATE TABLE IF NOT EXISTS `tbcliente` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `condominio` VARCHAR(255) NOT NULL,
-  `codigo` VARCHAR(50) NOT NULL,
-  `nome` VARCHAR(255) NOT NULL,
-  `valor` DECIMAL(10,2) NOT NULL
-);
 
--- Inserir alguns dados mock para a API do Condado
-INSERT IGNORE INTO `tbcliente` (`condominio`, `codigo`, `nome`, `valor`) VALUES
-('Cond. Bela Vista (DB Local)', '1001', 'João Silva', 450.00),
-('Cond. Sol Nascente (DB Local)', '1002', 'Maria Oliveira', 380.00),
-('Cond. Bosque das Flores (DB Local)', '1003', 'Carlos Santos', 520.00),
-('Cond. Morada dos Pássaros (DB Local)', '1004', 'Ana Souza', 310.00);

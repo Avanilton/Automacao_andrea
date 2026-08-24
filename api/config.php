@@ -26,12 +26,7 @@ function getConnection() {
 }
 
 function getCondadoConnection() {
-    // ---- AMBIENTE DE TESTE LOCAL ----
-    // Usa a mesma conexão do banco local (cobrancatask) para testar os cadastros
-    return getConnection();
-
-    /* 
-    // ---- AMBIENTE DE PRODUÇÃO (Descomente ao subir pro cPanel) ----
+    // ---- AMBIENTE DE PRODUÇÃO (Conexão com o Condado Oficial) ----
     try {
         $dsn = "mysql:host=" . CONDADO_DB_HOST . ";port=" . CONDADO_DB_PORT . ";dbname=" . CONDADO_DB_NAME . ";charset=utf8";
         $pdo = new PDO($dsn, CONDADO_DB_USER, CONDADO_DB_PASS);
@@ -41,7 +36,6 @@ function getCondadoConnection() {
     } catch (PDOException $e) {
         die(json_encode(['error' => 'Falha na conexão com o Condado: ' . $e->getMessage()]));
     }
-    */
 }
 
 function jsonResponse($data, $statusCode = 200) {
