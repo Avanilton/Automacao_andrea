@@ -3,9 +3,9 @@
 
 // Configurações do Banco de Dados Local (cobrancatask)
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'cobrancatask');
-define('DB_USER', 'root'); // Mudar no cPanel
-define('DB_PASS', ''); // Mudar no cPanel
+define('DB_NAME', 'bvgarantia_cobrancatask');
+define('DB_USER', 'bvgarantia_bv');
+define('DB_PASS', 'L[2u[r%}dY_ScSAk');
 
 // Configurações do Banco Externo (Condado - novacorpconect)
 define('CONDADO_DB_HOST', 'sistemasnovacorp.com.br');
