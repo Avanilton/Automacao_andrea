@@ -16,21 +16,24 @@ if ($action === 'fetch_data') {
     try {
         $pdoCondado = getCondadoConnection();
         
-        // A tabela informada é tbcliente
-        // Vamos assumir que os campos sejam algo como: nome, condominio, codigo, valor
-        // Se os nomes das colunas forem diferentes no banco real, ajuste aqui.
         $sql = "SELECT 
-                    condominio as property_name, 
-                    codigo as client_code, 
-                    nome as client_name, 
-                    valor as value 
-                FROM tbcliente 
+                    i.nomeFantasia as property_name, 
+                    c.idCliente as client_code, 
+                    c.nomeCliente as client_name, 
+                    0 as value,
+                    b.BLOCO as bloco,
+                    '' as apto,
+                    s.SITUACAO as situacao
+                FROM tbcliente c
+                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
+                LEFT JOIN tbbloco b ON c.idImovel = b.IDIMOVEL AND c.idEmpresa = b.IDEMPRESA
+                LEFT JOIN tbsituacao s ON c.idEmpresa = s.IDEMPRESA /* A relação exata de situacao pode precisar de ajuste se existir idSituacao no cliente */
                 WHERE 1=1";
                 
         $params = [];
         
         if (!empty($search)) {
-            $sql .= " AND (nome LIKE ? OR condominio LIKE ? OR codigo LIKE ?)";
+            $sql .= " AND (c.nomeCliente LIKE ? OR i.nomeFantasia LIKE ? OR c.idCliente LIKE ?)";
             $searchTerm = '%' . $search . '%';
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
@@ -40,6 +43,14 @@ if ($action === 'fetch_data') {
         $stmt = $pdoCondado->prepare($sql);
         $stmt->execute($params);
         $data = $stmt->fetchAll();
+        
+        // Remove duplicadas ou dados estranhos se os JOINs multiplicarem as linhas
+        // Como não sabemos a relação perfeita, vamos usar um hack para garantir unique clients
+        $uniqueData = [];
+        foreach($data as $row) {
+            $uniqueData[$row['client_code']] = $row;
+        }
+        $data = array_values($uniqueData);
         
         jsonResponse(['success' => true, 'data' => $data]);
         

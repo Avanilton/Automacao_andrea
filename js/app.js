@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="view-section active" id="view-tarefas">
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
-                    ${user && user.role === 'admin' ? `<button class="btn-primary" id="btnShowCreateTask">Criar tarefas</button>` : ''}
+                    <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || (JSON.parse(localStorage.getItem('user_permissions')) || {}).create_task) ? 'block' : 'none'}">Criar tarefas</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
@@ -302,8 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Setup view specific events
         if (viewName === 'tarefas') {
-            const btn = document.getElementById('btnShowCreateTask');
-            if (btn) btn.addEventListener('click', openCreateTaskModal);
             loadTarefas();
         } else if (viewName === 'kanban') {
             loadKanbanCards();
@@ -315,6 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
             loadPermissions();
         }
     }
+
+    // Event Delegation para o botão "Criar Tarefas" que é injetado dinamicamente
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'btnShowCreateTask') {
+            openCreateTaskModal();
+        }
+    });
 
     // --- Permissoes Logic ---
     window.loadPermissions = function() {
@@ -691,21 +696,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     <th>Imóvel / Condomínio</th>
                     <th>Cód. Cliente</th>
                     <th>Cliente</th>
-                    <th>Valor</th>
+                    <th>Bloco/Apto</th>
+                    <th>Situação</th>
                 </tr>`;
         
         data.forEach((row) => {
+            let blocoApto = [row.bloco, row.apto].filter(Boolean).join(' / ');
             html += `
                 <tr>
                     <td><input type="checkbox" class="task-check" 
                         value="${row.client_code}"
                         data-name="${row.property_name}"
                         data-client="${row.client_name}"
+                        data-bloco="${row.bloco || ''}"
+                        data-apto="${row.apto || ''}"
+                        data-situacao="${row.situacao || ''}"
                         data-type="${row.type || 'Cobrança'}"></td>
                     <td>${row.property_name}</td>
                     <td>${row.client_code}</td>
                     <td>${row.client_name}</td>
-                    <td>R$ ${parseFloat(row.value).toFixed(2).replace('.', ',')}</td>
+                    <td>${blocoApto}</td>
+                    <td>${row.situacao || ''}</td>
                 </tr>
             `;
         });
@@ -757,6 +768,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 property_name: cb.getAttribute('data-name') || 'Imóvel Desconhecido',
                 client_code: cb.value || '0',
                 client_name: cb.getAttribute('data-client') || 'Sem Cliente',
+                bloco: cb.getAttribute('data-bloco') || '',
+                apto: cb.getAttribute('data-apto') || '',
+                situacao: cb.getAttribute('data-situacao') || '',
                 value: 0
             }));
             
@@ -1071,9 +1085,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.getElementById('taskModalTitle').innerText = t.name || 'Detalhes da Tarefa';
+        let blocoApto = [t.bloco, t.apto].filter(Boolean).join(' / ');
+        let extraInfo = '';
+        if (blocoApto) extraInfo += `<p><strong>Bloco/Apto:</strong> ${blocoApto}</p>`;
+        if (t.situacao) extraInfo += `<p><strong>Situação:</strong> <span class="label" style="background:var(--bg-body); color:var(--text-main); border:1px solid var(--border)">${t.situacao}</span></p>`;
+
         document.getElementById('taskDetailsContent').innerHTML = `
             <p><strong>Imóvel:</strong> ${t.name || 'N/A'}</p>
             <p><strong>Cliente:</strong> ${t.client || 'N/A'}</p>
+            ${extraInfo}
             <p><strong>Tipo:</strong> ${t.type || 'N/A'}</p>
             <p style="display:flex; align-items:center;">
                 <strong style="margin-right:5px;">Status:</strong> 

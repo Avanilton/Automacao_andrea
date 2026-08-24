@@ -75,7 +75,7 @@ if ($action === 'create') {
     
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
         foreach($data['tasks'] as $task) {
             $stmt->execute([
@@ -85,7 +85,10 @@ if ($action === 'create') {
                 $task['value'],
                 $data['due_date'] ?? null,
                 $assigned_to,
-                $user_id
+                $user_id,
+                $task['bloco'] ?? null,
+                $task['apto'] ?? null,
+                $task['situacao'] ?? null
             ]);
         }
         $pdo->commit();
