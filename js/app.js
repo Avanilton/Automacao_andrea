@@ -40,6 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.toggle('open');
     });
 
+    // --- Safe User Permissions ---
+    function safeGetPermissions() {
+        try {
+            const p = localStorage.getItem('user_permissions');
+            return p ? JSON.parse(p) : {};
+        } catch(e) {
+            return {};
+        }
+    }
+
     // --- Navigation (SPA) ---
     const navItems = document.querySelectorAll('.nav-item');
     const currentViewTitle = document.getElementById('currentViewTitle');
@@ -51,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="view-section active" id="view-tarefas">
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
-                    <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || (JSON.parse(localStorage.getItem('user_permissions')) || {}).create_task) ? 'block' : 'none'}">Criar tarefas</button>
+                    <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
@@ -333,14 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Permissoes Logic ---
     window.loadPermissions = function() {
-        const perms = JSON.parse(localStorage.getItem('user_permissions')) || {
-            create_task: false,
-            distribute_task: false,
-            view_kanban: true,
-            view_reports: false,
-            view_trash: false,
-            view_config: true
-        };
+        const perms = safeGetPermissions();
         
         const c_task = document.getElementById('perm_create_task_user');
         if(c_task) c_task.checked = perms.create_task;
@@ -606,10 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadView(viewName);
         });
     });
-
-    // Default view
-    loadView('tarefas');
-
 
     // --- Modals Logic ---
     const modalOverlay = document.getElementById('modalOverlay');
@@ -1379,4 +1378,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // Default view (called at the end to ensure all functions are defined)
+    loadView('tarefas');
 });
