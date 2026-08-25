@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 
-async function getSchema() {
+async function getColumns() {
     let connection;
     try {
         connection = await mysql.createConnection({
@@ -16,8 +16,12 @@ async function getSchema() {
 
         for (const table of tables) {
             try {
-                const [rows] = await connection.execute(`SHOW COLUMNS FROM ${table}`);
-                results[table] = rows.map(r => r.Field);
+                const [rows] = await connection.execute(`SELECT * FROM ${table} LIMIT 1`);
+                if (rows.length > 0) {
+                    results[table] = Object.keys(rows[0]);
+                } else {
+                    results[table] = 'Empty table';
+                }
             } catch (e) {
                 results[table] = e.message;
             }
@@ -31,4 +35,4 @@ async function getSchema() {
     }
 }
 
-getSchema();
+getColumns();
