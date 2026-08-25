@@ -3,8 +3,8 @@
 require_once 'config.php';
 session_start();
 
-// Verifica se está logado e é admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+// Verifica se está logado
+if (!isset($_SESSION['user_id'])) {
     jsonResponse(['error' => 'Acesso negado'], 403);
 }
 

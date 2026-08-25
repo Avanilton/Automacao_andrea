@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Delegation para o botão "Criar Tarefas" que é injetado dinamicamente
     document.addEventListener('click', (e) => {
-        if (e.target.id === 'btnShowCreateTask') {
+        if (e.target.closest('#btnShowCreateTask')) {
             openCreateTaskModal();
         }
     });
