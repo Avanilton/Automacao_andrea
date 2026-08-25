@@ -45,14 +45,33 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.toggle('open');
     });
 
+    window.appPermissions = {
+        create_task: false,
+        distribute_task: false,
+        view_kanban: true,
+        view_reports: false,
+        view_trash: false,
+        view_config: false
+    };
+
+    // Tenta carregar as permissões do servidor
+    fetch('api/settings.php?action=get')
+        .then(res => res.json())
+        .then(data => {
+            if (data) window.appPermissions = data;
+            // Se já estiver na view de tarefas, recarrega para aplicar a permissão no botão
+            if (document.getElementById('view-tarefas')) {
+                const btn = document.getElementById('btnShowCreateTask');
+                if (btn) {
+                    btn.style.display = (user && (user.role === 'admin' || window.appPermissions.create_task)) ? 'block' : 'none';
+                }
+            }
+        })
+        .catch(e => console.error('Erro ao carregar permissões', e));
+
     // --- Safe User Permissions ---
     function safeGetPermissions() {
-        try {
-            const p = localStorage.getItem('user_permissions');
-            return p ? JSON.parse(p) : {};
-        } catch(e) {
-            return {};
-        }
+        return window.appPermissions;
     }
 
     // --- Navigation (SPA) ---
@@ -379,8 +398,20 @@ document.addEventListener('DOMContentLoaded', () => {
             view_config: document.getElementById('perm_view_config_user')?.checked || false
         };
         
-        localStorage.setItem('user_permissions', JSON.stringify(perms));
-        alert("Permissões de acesso para Usuário Padrão foram salvas com sucesso!");
+        fetch('api/settings.php?action=save', {
+            method: 'POST',
+            body: JSON.stringify(perms)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.appPermissions = perms;
+                alert("Permissões de acesso para Usuário Padrão foram salvas com sucesso para todos os usuários!");
+            }
+        })
+        .catch(e => {
+            alert("Erro ao salvar permissões no servidor.");
+        });
     };
 
 
@@ -885,15 +916,23 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-            const data = await res.json();
+            const text = await res.text();
             
-            if (data && data.success) {
-                window.currentLoadedTasks = data.tasks;
-            } else {
+            try {
+                const data = JSON.parse(text);
+                if (data && data.success) {
+                    window.currentLoadedTasks = data.tasks;
+                } else {
+                    console.error("API falhou ou não retornou success", data);
+                    window.currentLoadedTasks = [];
+                }
+            } catch (jsonErr) {
+                console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
+                alert("Erro ao carregar tarefas. Resposta do servidor não é JSON válido: " + text.substring(0, 150));
                 window.currentLoadedTasks = [];
             }
         } catch (e) {
-            console.error(e);
+            console.error("Erro no fetch de loadTarefas", e);
             window.currentLoadedTasks = [];
         }
 
@@ -1008,14 +1047,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate cards from API
         try {
             const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-            const data = await res.json();
-            if (data && data.success) {
-                window.currentLoadedTasks = data.tasks;
-            } else {
-                window.currentLoadedTasks = [];
+            const text = await res.text();
+            try {
+                const data = JSON.parse(text);
+                if (data && data.success) {
+                    window.currentLoadedTasks = data.tasks;
+                }
+            } catch(e) {
+                console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);
             }
-        } catch (e) {
-            console.error(e);
+        } catch(e) {
+            console.error("Erro no fetch de Kanban", e);
         }
 
         let savedTasks = window.currentLoadedTasks || [];

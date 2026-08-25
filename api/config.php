@@ -41,7 +41,12 @@ function getCondadoConnection() {
 function jsonResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     header('Content-Type: application/json');
-    echo json_encode($data);
+    $json = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($json === false) {
+        echo json_encode(['error' => 'Erro de codificação JSON: ' . json_last_error_msg()]);
+    } else {
+        echo $json;
+    }
     exit;
 }
 ?>
