@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
         console.error('Erro ao ler a sessão:', err);
     }
+    
+    // Carregar usuários no início para popular os dropdowns de distribuição/atribuição
+    if (typeof loadUsers === 'function') {
+        loadUsers();
+    }
 
     // --- Sidebar Toggle ---
     const sidebar = document.getElementById('sidebar');
@@ -814,10 +819,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('distributeTasksModal').classList.add('hidden');
             const modalOverlay = document.getElementById('modalOverlay');
             if(modalOverlay) modalOverlay.classList.add('hidden');
-            
-            // Atualizar as tabelas
-            if (typeof loadTarefas === 'function') loadTarefas();
-            if (typeof loadKanbanCards === 'function') loadKanbanCards();
         };
     }
 
@@ -905,7 +906,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         window.currentLoadedTasks.forEach((t) => {
             let sharedArray = t.shared_with || [];
-            if (user && user.role !== 'admin' && t.assigned_to != user.id && !sharedArray.includes(String(user.id))) return;
+            
+            const isAdmin = user && user.role === 'admin';
+            const isAssigned = user && t.assigned_to == user.id;
+            const isShared = user && sharedArray.includes(String(user.id));
+            
+            if (!isAdmin && !isAssigned && !isShared) return;
 
             let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
             let userName = assignedUser ? assignedUser.name : 'Não atribuído';
@@ -1016,8 +1022,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         savedTasks.forEach((t) => {
             let sharedArray = t.shared_with || [];
+            
+            const isAdmin = user && user.role === 'admin';
+            const isAssigned = user && t.assigned_to == user.id;
+            const isShared = user && sharedArray.includes(String(user.id));
+            
             // Admin vê todos os cards. Usuário comum vê só os atribuídos a ele ou compartilhados com ele.
-            if (user && user.role !== 'admin' && t.assigned_to != user.id && !sharedArray.includes(String(user.id))) return;
+            if (!isAdmin && !isAssigned && !isShared) return;
             
             let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
             let userName = assignedUser ? assignedUser.name : 'Não atribuído';
