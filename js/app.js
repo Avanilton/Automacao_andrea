@@ -924,6 +924,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.currentLoadedTasks = data.tasks;
                 } else {
                     console.error("API falhou ou não retornou success", data);
+                    if (data && data.error) {
+                        alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
+                    }
                     window.currentLoadedTasks = [];
                 }
             } catch (jsonErr) {
@@ -1052,6 +1055,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = JSON.parse(text);
                 if (data && data.success) {
                     window.currentLoadedTasks = data.tasks;
+                } else {
+                    if (data && data.error) {
+                        alert("Erro no servidor (Kanban): " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
+                    }
                 }
             } catch(e) {
                 console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);

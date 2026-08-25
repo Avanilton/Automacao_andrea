@@ -10,8 +10,8 @@ $action = $_GET['action'] ?? '';
 $pdo = getConnection();
 
 if ($action === 'list') {
-    // Listar tarefas não excluídas
-    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL ORDER BY created_at DESC");
+    // Listar tarefas não excluídas (suporta MySQL Strict mode ou zero-dates de imports cPanel)
+    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00' ORDER BY created_at DESC");
     $tasks = $stmt->fetchAll();
     
     // Buscar compartilhamentos
