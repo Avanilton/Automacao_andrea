@@ -883,7 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!tbody) return;
         
         try {
-            const res = await fetch('api/tasks.php?action=list');
+            const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
             const data = await res.json();
             
             if (data && data.success) {
@@ -1001,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Populate cards from API
         try {
-            const res = await fetch('api/tasks.php?action=list');
+            const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
             const data = await res.json();
             if (data && data.success) {
                 window.currentLoadedTasks = data.tasks;

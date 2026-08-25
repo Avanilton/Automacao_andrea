@@ -95,7 +95,7 @@ if ($action === 'create') {
         jsonResponse(['success' => true]);
     } catch(Exception $e) {
         $pdo->rollBack();
-        jsonResponse(['error' => 'Erro ao salvar tarefas'], 500);
+        jsonResponse(['error' => 'Erro ao salvar tarefas: ' . $e->getMessage()], 500);
     }
 }
 
