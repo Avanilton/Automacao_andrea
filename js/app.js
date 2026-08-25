@@ -702,8 +702,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <table class="data-table">
                 <tr>
                     <th><input type="checkbox" id="checkAll"></th>
+                    <th>Cód. Imóvel</th>
                     <th>Imóvel / Condomínio</th>
-                    <th>Cód. Cliente</th>
                     <th>Cliente</th>
                     <th>Bloco/Apto</th>
                     <th>Situação</th>
@@ -721,8 +721,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         data-apto="${row.apto || ''}"
                         data-situacao="${row.situacao || ''}"
                         data-type="${row.type || 'Cobrança'}"></td>
+                    <td>${row.property_code || ''}</td>
                     <td>${row.property_name}</td>
-                    <td>${row.client_code}</td>
                     <td>${row.client_name}</td>
                     <td>${blocoApto}</td>
                     <td>${row.situacao || ''}</td>

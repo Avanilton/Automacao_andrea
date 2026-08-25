@@ -1,0 +1,64 @@
+{
+  "tbimovel": [
+    "idImovel",
+    "idEmpresa",
+    "nomeFantasia",
+    "cnpj"
+  ],
+  "tbcliente": [
+    "idEmpresa",
+    "idImovel",
+    "idCliente",
+    "nomeCliente",
+    "fonece",
+    "foneco",
+    "cpf",
+    "email",
+    "cnpj",
+    "dddce",
+    "dddco",
+    "email2",
+    "email3"
+  ],
+  "tbBoleto": [
+    "idBoleto",
+    "idEmpresa",
+    "idImovel",
+    "idCliente",
+    "cancelado",
+    "pago",
+    "valorPago",
+    "valorParc",
+    "multa",
+    "juros",
+    "correcao",
+    "encargo",
+    "total",
+    "dataVecto",
+    "nrParcela",
+    "tarifaBancaria",
+    "totPrestacao",
+    "origem",
+    "dtEmissaoExtra",
+    "totalExtra",
+    "idRateio",
+    "dataPgto",
+    "diferenca"
+  ],
+  "tbbloco": [
+    "IDBLOCO",
+    "IDEMPRESA",
+    "IDIMOVEL",
+    "BLOCO"
+  ],
+  "TbFuncionario": [
+    "IDFUNCIONARIO",
+    "GRUPO",
+    "NOMEFUNCIONARIO"
+  ],
+  "TBSITUACAO": [
+    "IDSITUACAO",
+    "IDEMPRESA",
+    "SITUACAO"
+  ]
+}

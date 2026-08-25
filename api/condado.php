@@ -18,16 +18,15 @@ if ($action === 'fetch_data') {
         
         $sql = "SELECT 
                     COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
+                    c.idImovel as property_code,
                     c.idCliente as client_code, 
                     c.nomeCliente as client_name, 
                     0 as value,
-                    MIN(b.BLOCO) as bloco,
+                    (SELECT b.BLOCO FROM tbbloco b WHERE b.IDIMOVEL = c.idImovel AND b.IDEMPRESA = c.idEmpresa LIMIT 1) as bloco,
                     '' as apto,
-                    MIN(s.SITUACAO) as situacao
+                    (SELECT s.SITUACAO FROM tbsituacao s WHERE s.IDEMPRESA = c.idEmpresa LIMIT 1) as situacao
                 FROM tbcliente c
-                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-                LEFT JOIN tbbloco b ON c.idImovel = b.IDIMOVEL AND c.idEmpresa = b.IDEMPRESA
-                LEFT JOIN tbsituacao s ON c.idEmpresa = s.IDEMPRESA /* A relação exata de situacao pode precisar de ajuste se existir idSituacao no cliente */
+                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa /* A relação exata de situacao pode precisar de ajuste se existir idSituacao no cliente */
                 WHERE 1=1";
                 
         $params = [];
@@ -38,7 +37,6 @@ if ($action === 'fetch_data') {
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
         
-        $sql .= " GROUP BY c.idCliente, c.nomeCliente, i.nomeFantasia";
         $sql .= " LIMIT 50";
         
         $stmt = $pdoCondado->prepare($sql);

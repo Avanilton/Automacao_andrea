@@ -1,33 +1,87 @@
 {
   "status": "error",
-  "message": "As queries fornecidas contem nomes de colunas que nao existem no banco de dados Condado (novacorpconect). O formato M.id.idEmpresa e invalido para o MySQL.",
-  "erros": {
-    "query1": "Unknown column 'M.idTipoPgto' in 'field list'",
-    "query2": "Unknown column 'inativo' in 'where clause'"
+  "message": "A nova query também falhou. O banco de dados do Condado (novacorpconect) não possui várias das colunas solicitadas, incluindo as usadas nos JOINs.",
+  "colunas_faltantes": {
+    "Tbcliente": [
+      "FONERe",
+      "DDDRE",
+      "APTO",
+      "IDBLOCO",
+      "IDSITUACAO"
+    ],
+    "TbBoleto": [
+      "MESREF",
+      "NUMERODOCUMENTO",
+      "IDFUNCIONARIOINCL",
+      "IDFUNCIONARIOALT",
+      "DATAEDICAO"
+    ],
+    "TbFuncionario": [
+      "LOGIN"
+    ]
   },
   "schema_condado_real": {
-    "tbCaixaMovi": [
+    "tbimovel": [
+      "idImovel",
+      "idEmpresa",
+      "nomeFantasia",
+      "cnpj"
+    ],
+    "tbcliente": [
+      "idEmpresa",
+      "idImovel",
+      "idCliente",
+      "nomeCliente",
+      "fonece",
+      "foneco",
+      "cpf",
+      "email",
+      "cnpj",
+      "dddce",
+      "dddco",
+      "email2",
+      "email3"
+    ],
+    "tbBoleto": [
+      "idBoleto",
+      "idEmpresa",
+      "idImovel",
+      "idCliente",
+      "cancelado",
+      "pago",
+      "valorPago",
+      "valorParc",
+      "multa",
+      "juros",
+      "correcao",
+      "encargo",
+      "total",
+      "dataVecto",
+      "nrParcela",
+      "tarifaBancaria",
+      "totPrestacao",
+      "origem",
+      "dtEmissaoExtra",
+      "totalExtra",
+      "idRateio",
+      "dataPgto",
+      "diferenca"
+    ],
+    "tbbloco": [
+      "IDBLOCO",
       "IDEMPRESA",
-      "IDCAIXA",
-      "IDPLANOEMPRESA",
-      "DATAMVTO",
       "IDIMOVEL",
-      "VALORMVTO",
-      "HORAMVTO",
-      "TIPOMVTO",
-      "TROCO",
-      "VALORRECEBIDO"
+      "BLOCO"
     ],
-    "tbTipoPgto": [
-      "IDTIPOPGTO",
-      "IDEMPRESA",
-      "TIPOPGTO"
+    "TbFuncionario": [
+      "IDFUNCIONARIO",
+      "GRUPO",
+      "NOMEFUNCIONARIO"
     ],
-    "tbConta": [
-      "IDCONTA",
+    "TBSITUACAO": [
+      "IDSITUACAO",
       "IDEMPRESA",
-      "IDAGENCIA",
-      "NUMEROCONTA"
+      "SITUACAO"
     ]
   }
 }
