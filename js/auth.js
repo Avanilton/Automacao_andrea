@@ -5,7 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
 
     // Basic session check
-    const userStr = localStorage.getItem('cobranca_user');
+    let userStr = null;
+    try {
+        userStr = localStorage.getItem('cobranca_user');
+    } catch (e) {
+        console.warn('LocalStorage indisponível', e);
+    }
+    
     const isDashboard = window.location.pathname.includes('dashboard.html');
     const isLogin = window.location.pathname.includes('login.html');
 
@@ -53,8 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            // Em produção: fetch('api/auth.php?action=logout')
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch('api/auth.php?action=logout');
+            } catch(e) {
+                console.warn('Backend logout failed', e);
+            }
             localStorage.removeItem('cobranca_user');
             window.location.href = 'login.html';
         });

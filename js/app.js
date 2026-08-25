@@ -1,19 +1,29 @@
 // js/app.js
 document.addEventListener('DOMContentLoaded', () => {
     // --- User Session ---
-    const userStr = localStorage.getItem('cobranca_user');
+    let userStr = null;
     let user = null;
-    if (userStr) {
-        user = JSON.parse(userStr);
-        document.getElementById('sidebarUserName').textContent = user.name;
-        document.getElementById('sidebarUserRole').textContent = user.role === 'admin' ? 'Administrador' : 'Usuário';
-        document.getElementById('sidebarAvatar').textContent = user.name.charAt(0).toUpperCase();
-        
-        if (user.role === 'admin') {
-            document.getElementById('adminSubmenu').classList.remove('hidden');
-            const navUsuarios = document.getElementById('navUsuarios');
-            if(navUsuarios) navUsuarios.style.display = 'flex';
+    try {
+        userStr = localStorage.getItem('cobranca_user');
+        if (userStr) {
+            user = JSON.parse(userStr);
+            const userNameEl = document.getElementById('sidebarUserName');
+            const userRoleEl = document.getElementById('sidebarUserRole');
+            const userAvatarEl = document.getElementById('sidebarAvatar');
+            
+            if (userNameEl) userNameEl.textContent = user.name;
+            if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrador' : 'Usuário';
+            if (userAvatarEl && user.name) userAvatarEl.textContent = user.name.charAt(0).toUpperCase();
+            
+            if (user.role === 'admin') {
+                const adminSubmenu = document.getElementById('adminSubmenu');
+                if (adminSubmenu) adminSubmenu.classList.remove('hidden');
+                const navUsuarios = document.getElementById('navUsuarios');
+                if (navUsuarios) navUsuarios.style.display = 'flex';
+            }
         }
+    } catch (err) {
+        console.error('Erro ao ler a sessão:', err);
     }
 
     // --- Sidebar Toggle ---
