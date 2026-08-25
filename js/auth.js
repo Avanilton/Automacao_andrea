@@ -23,6 +23,35 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'dashboard.html';
     }
 
+    // Inactivity timeout (10 minutes)
+    if (isDashboard && userStr) {
+        const setupInactivityTimer = () => {
+            let timeout;
+            const performLogout = async () => {
+                try {
+                    await fetch('api/auth.php?action=logout');
+                } catch(e) {}
+                localStorage.removeItem('cobranca_user');
+                alert('Sua sessão expirou devido a 10 minutos de inatividade.');
+                window.location.href = 'login.html';
+            };
+
+            const resetTimer = () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(performLogout, 10 * 60 * 1000); // 10 minutes
+            };
+
+            window.onload = resetTimer;
+            document.onmousemove = resetTimer;
+            document.onkeypress = resetTimer;
+            document.onclick = resetTimer;
+            document.onscroll = resetTimer;
+            
+            resetTimer();
+        };
+        setupInactivityTimer();
+    }
+
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();

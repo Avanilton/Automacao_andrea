@@ -61,5 +61,43 @@ if ($action === 'fetch_data') {
     }
 }
 
+if ($action === 'fetch_client_details') {
+    $client_code = $_GET['client_code'] ?? '';
+    if (!$client_code) {
+        jsonResponse(['error' => 'client_code é obrigatório'], 400);
+    }
+    
+    try {
+        $pdoCondado = getCondadoConnection();
+        
+        // 1. Fetch Contact Data
+        $sqlContact = "SELECT fonece, dddce, foneco, dddco, email, email2, email3 
+                       FROM tbcliente WHERE idCliente = ? LIMIT 1";
+        $stmtContact = $pdoCondado->prepare($sqlContact);
+        $stmtContact->execute([$client_code]);
+        $contact = $stmtContact->fetch();
+        
+        // 2. Fetch Due Boletos (Taxas)
+        $sqlTaxas = "SELECT COUNT(*) as boletos_em_atraso 
+                     FROM tbboleto 
+                     WHERE idCliente = ? AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()";
+        $stmtTaxas = $pdoCondado->prepare($sqlTaxas);
+        $stmtTaxas->execute([$client_code]);
+        $taxas = $stmtTaxas->fetch();
+        
+        jsonResponse([
+            'success' => true, 
+            'contact' => $contact ?: null, 
+            'taxas' => $taxas ? $taxas['boletos_em_atraso'] : 0
+        ]);
+        
+    } catch (PDOException $e) {
+        jsonResponse([
+            'success' => false, 
+            'error' => 'Falha ao buscar detalhes no banco do Condado: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
 jsonResponse(['error' => 'Ação não encontrada.'], 404);
 ?>

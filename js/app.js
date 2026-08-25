@@ -1112,7 +1112,47 @@ document.addEventListener('DOMContentLoaded', () => {
             </p>
             <p><strong>Atribuído a:</strong> <span id="lblAssignedUser">${userName}</span></p>
             <p><strong>Criada em:</strong> ${t.created_at || 'N/A'}</p>
+            <div id="dynamicClientDetails" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+                <p style="color:var(--text-muted); font-style:italic;">Carregando detalhes do cliente...</p>
+            </div>
         `;
+        
+        // Fetch Taxas and Contatos
+        if (t.client_code) {
+            fetch(\`api/condado.php?action=fetch_client_details&client_code=\${t.client_code}\`)
+                .then(res => res.json())
+                .then(data => {
+                    let detailsHtml = '';
+                    if (data.success) {
+                        detailsHtml += \`<p style="margin-bottom:10px;"><strong>Taxas (Boletos Devidos):</strong> <span class="label" style="background:var(--danger); color:white;">\${data.taxas}</span></p>\`;
+                        
+                        if (data.contact) {
+                            detailsHtml += \`<p style="margin-bottom:5px;"><strong>Dados de Contato:</strong></p>\`;
+                            detailsHtml += \`<ul style="margin: 0 0 10px 20px; font-size: 0.9rem; line-height: 1.5;">\`;
+                            if (data.contact.fonece) detailsHtml += \`<li><strong>Telefone 1:</strong> (\${data.contact.dddce || ''}) \${data.contact.fonece}</li>\`;
+                            if (data.contact.foneco) detailsHtml += \`<li><strong>Telefone 2:</strong> (\${data.contact.dddco || ''}) \${data.contact.foneco}</li>\`;
+                            if (data.contact.email) detailsHtml += \`<li><strong>Email:</strong> \${data.contact.email}</li>\`;
+                            if (data.contact.email2) detailsHtml += \`<li><strong>Email 2:</strong> \${data.contact.email2}</li>\`;
+                            if (data.contact.email3) detailsHtml += \`<li><strong>Email 3:</strong> \${data.contact.email3}</li>\`;
+                            detailsHtml += \`</ul>\`;
+                        } else {
+                            detailsHtml += \`<p><strong>Dados de Contato:</strong> Nenhum contato encontrado.</p>\`;
+                        }
+                    } else {
+                        detailsHtml = \`<p style="color:var(--danger)">Erro ao carregar detalhes: \${data.error || 'Desconhecido'}</p>\`;
+                    }
+                    const container = document.getElementById('dynamicClientDetails');
+                    if (container) container.innerHTML = detailsHtml;
+                })
+                .catch(err => {
+                    const container = document.getElementById('dynamicClientDetails');
+                    if (container) container.innerHTML = \`<p style="color:var(--danger)">Erro de conexão ao carregar detalhes.</p>\`;
+                });
+        } else {
+            const container = document.getElementById('dynamicClientDetails');
+            if (container) container.innerHTML = \`<p style="color:var(--text-muted)">Tarefa sem código de cliente associado.</p>\`;
+        }
+
 
         // Renderizar a lista de usuários no menu lateral para reatribuir e compartilhar
         let assignContainer = document.getElementById('assignUserContainer');
