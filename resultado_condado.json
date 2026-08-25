@@ -1,0 +1,33 @@
+{
+  "status": "error",
+  "message": "As queries fornecidas contem nomes de colunas que nao existem no banco de dados Condado (novacorpconect). O formato M.id.idEmpresa e invalido para o MySQL.",
+  "erros": {
+    "query1": "Unknown column 'M.idTipoPgto' in 'field list'",
+    "query2": "Unknown column 'inativo' in 'where clause'"
+  },
+  "schema_condado_real": {
+    "tbCaixaMovi": [
+      "IDEMPRESA",
+      "IDCAIXA",
+      "IDPLANOEMPRESA",
+      "DATAMVTO",
+      "IDIMOVEL",
+      "VALORMVTO",
+      "HORAMVTO",
+      "TIPOMVTO",
+      "TROCO",
+      "VALORRECEBIDO"
+    ],
+    "tbTipoPgto": [
+      "IDTIPOPGTO",
+      "IDEMPRESA",
+      "TIPOPGTO"
+    ],
+    "tbConta": [
+      "IDCONTA",
+      "IDEMPRESA",
+      "IDAGENCIA",
+      "NUMEROCONTA"
+    ]
+  }
+}

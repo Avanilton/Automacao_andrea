@@ -17,13 +17,13 @@ if ($action === 'fetch_data') {
         $pdoCondado = getCondadoConnection();
         
         $sql = "SELECT 
-                    i.nomeFantasia as property_name, 
+                    COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
                     c.idCliente as client_code, 
                     c.nomeCliente as client_name, 
                     0 as value,
-                    b.BLOCO as bloco,
+                    MIN(b.BLOCO) as bloco,
                     '' as apto,
-                    s.SITUACAO as situacao
+                    MIN(s.SITUACAO) as situacao
                 FROM tbcliente c
                 LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
                 LEFT JOIN tbbloco b ON c.idImovel = b.IDIMOVEL AND c.idEmpresa = b.IDEMPRESA
@@ -38,6 +38,7 @@ if ($action === 'fetch_data') {
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
         
+        $sql .= " GROUP BY c.idCliente, c.nomeCliente, i.nomeFantasia";
         $sql .= " LIMIT 50";
         
         $stmt = $pdoCondado->prepare($sql);

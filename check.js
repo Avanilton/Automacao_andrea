@@ -1,0 +1,1 @@
+const mysql = require('mysql2/promise'); (async () => { const c = await mysql.createConnection({host: 'sistemasnovacorp.com.br', port: 5643, user: 'Intelligence', password: '@bv2026@', database: 'novacorpconect'}); const [r1] = await c.query('SHOW TABLES'); console.log(r1.map(x => Object.values(x)[0]).filter(t => t.toLowerCase().includes(empresa))); c.end(); })();
