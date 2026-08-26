@@ -85,10 +85,19 @@ if ($action === 'fetch_client_details') {
         $stmtTaxas->execute([$client_code]);
         $taxas = $stmtTaxas->fetch();
         
+        $sqlBoletos = "SELECT numero, valor, dataVecto 
+                       FROM tbboleto 
+                       WHERE idCliente = ? AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()
+                       ORDER BY dataVecto ASC";
+        $stmtBoletos = $pdoCondado->prepare($sqlBoletos);
+        $stmtBoletos->execute([$client_code]);
+        $boletos = $stmtBoletos->fetchAll();
+        
         jsonResponse([
             'success' => true, 
             'contact' => $contact ?: null, 
-            'taxas' => $taxas ? $taxas['boletos_em_atraso'] : 0
+            'taxas' => $taxas ? $taxas['boletos_em_atraso'] : 0,
+            'boletos' => $boletos ?: []
         ]);
         
     } catch (PDOException $e) {

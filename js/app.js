@@ -1259,6 +1259,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             detailsHtml += `<p><strong>Dados de Contato:</strong> Nenhum contato encontrado.</p>`;
                         }
+
+                        if (data.boletos && data.boletos.length > 0) {
+                            detailsHtml += `<div style="margin-bottom:10px;">
+                                <p style="margin-bottom:5px;"><strong>Boletos em Atraso:</strong></p>
+                                <ul style="margin: 0 0 10px 20px; font-size: 0.9rem; line-height: 1.5;">`;
+                            data.boletos.forEach(b => {
+                                const venc = b.dataVecto ? b.dataVecto.split('-').reverse().join('/') : 'N/D';
+                                const valor = parseFloat(b.valor || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                                detailsHtml += `<li>Boleto <strong>#${b.numero}</strong> - ${valor} (Venceu em: ${venc})</li>`;
+                            });
+                            detailsHtml += `</ul></div>`;
+                        }
                     } else {
                         detailsHtml = `<p style="color:var(--danger)">Erro ao carregar detalhes: ${data.error || 'Desconhecido'}</p>`;
                     }
