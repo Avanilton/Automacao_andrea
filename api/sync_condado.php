@@ -1,5 +1,11 @@
 <?php
 require_once 'config.php';
+
+// Limpa qualquer buffer iniciado no config.php para mostrar texto instantaneamente
+while (ob_get_level()) {
+    ob_end_flush();
+}
+
 header('Content-Type: text/html; charset=utf-8');
 session_start();
 
@@ -12,6 +18,8 @@ $pdoCondado = getCondadoConnection();
 
 echo "<div style='font-family: Arial; text-align: center; margin-top: 50px;'>";
 echo "<h2>🔄 Sincronização Inteligente em Andamento...</h2>";
+echo "<p>Conectando aos bancos de dados...</p>";
+flush(); // Força o envio pro navegador
 
 try {
     if ($step === 1) {
@@ -35,6 +43,7 @@ try {
         }
 
         echo "<p>Baixando boletos... (Processando a partir do ID: $lastId)</p>";
+        flush(); // Força envio pro navegador
         
         $stmt = $pdoCondado->prepare("
             SELECT idBoleto, idCliente as client_code, total, dataVecto 
