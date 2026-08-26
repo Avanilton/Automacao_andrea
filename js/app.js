@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const userAvatarEl = document.getElementById('sidebarAvatar');
 
             if (userNameEl) userNameEl.textContent = user.name;
-            if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrador' : 'Usuário';
+            if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrador' : 'Usu�rio';
             
             if (userAvatarEl && user.name) {
                 if (user.avatar) {
@@ -29,10 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     } catch (err) {
-    console.error('Erro ao ler a sessÃ£o:', err);
+    console.error('Erro ao ler a sessão:', err);
 }
 
-// Carregar usuÃ¡rios no inÃ­cio (agora chamado no final do script)
+// Carregar usuários no início (agora chamado no final do script)
 
 // --- Sidebar Toggle ---
 const sidebar = document.getElementById('sidebar');
@@ -57,12 +57,12 @@ window.appPermissions = {
     view_config: false
 };
 
-// Tenta carregar as permissÃµes do servidor
+// Tenta carregar as permissões do servidor
 fetch('api/settings.php?action=get')
     .then(res => res.json())
     .then(data => {
         if (data) window.appPermissions = data;
-        // Se jÃ¡ estiver na view de tarefas, recarrega para aplicar a permissÃ£o no botÃ£o
+        // Se já estiver na view de tarefas, recarrega para aplicar a permissão no botão
         if (document.getElementById('view-tarefas')) {
             const btn = document.getElementById('btnShowCreateTask');
             if (btn) {
@@ -70,7 +70,7 @@ fetch('api/settings.php?action=get')
             }
         }
     })
-    .catch(e => console.error('Erro ao carregar permissÃµes', e));
+    .catch(e => console.error('Erro ao carregar permissões', e));
 
 // --- Safe User Permissions ---
 function safeGetPermissions() {
@@ -95,11 +95,11 @@ const views = {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ImÃ³vel</th>
+                                <th>Imóvel</th>
                                 <th>Cliente</th>
                                 <th>Vencimento</th>
                                 <th>Status</th>
-                                <th>AÃ§Ãµes</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="tarefasList">
@@ -126,11 +126,11 @@ const views = {
     relatorios: `
             <div class="view-section active" id="view-relatorios">
                 <div class="flex-between" style="margin-bottom: 2rem;">
-                    <h3>RelatÃ³rios Gerenciais</h3>
+                    <h3>Relatórios Gerenciais</h3>
                     <button class="btn-primary btn-sm" onclick="loadRelatorios()">Atualizar Dados</button>
                 </div>
                 <div id="reportsContainer">
-                    <p style="text-align:center;">Carregando relatÃ³rios...</p>
+                    <p style="text-align:center;">Carregando relatórios...</p>
                 </div>
             </div>
         `,
@@ -145,9 +145,9 @@ const views = {
                         <thead>
                             <tr>
                                 <th>Tipo</th>
-                                <th>Nome / TÃ­tulo</th>
-                                <th>ExcluÃ­do Em</th>
-                                <th>AÃ§Ãµes</th>
+                                <th>Nome / Título</th>
+                                <th>Excluído Em</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="lixeiraList">
@@ -158,7 +158,7 @@ const views = {
             </div>
         `,
     configuracoes: `<div class="view-section active" id="view-config">
-            <h3 style="margin-bottom: 2rem;">ConfiguraÃ§Ãµes</h3>
+            <h3 style="margin-bottom: 2rem;">Configurações</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Dados do Perfil</h4>
@@ -201,16 +201,16 @@ const views = {
             ${user && user.role === 'admin' ? `
             <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-top: 2rem;">
                 <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Submenu Administrativo</h4>
-                <p style="margin-bottom: 1rem; color: var(--text-muted);">Definir e ajustar permissÃµes de acesso dos usuÃ¡rios no sistema.</p>
-                <button class="btn-secondary" onclick="document.querySelector('[data-view=permissoes]').click()">Gerenciar PermissÃµes</button>
+                <p style="margin-bottom: 1rem; color: var(--text-muted);">Definir e ajustar permissões de acesso dos usuários no sistema.</p>
+                <button class="btn-secondary" onclick="document.querySelector('[data-view=permissoes]').click()">Gerenciar Permissões</button>
             </div>
             ` : ''}
         </div>`,
     usuarios: `
             <div class="view-section active" id="view-usuarios">
                 <div class="flex-between" style="margin-bottom: 2rem;">
-                    <h3>Gerenciar UsuÃ¡rios</h3>
-                    <button class="btn-primary" onclick="document.getElementById('createUserModal').classList.remove('hidden'); document.getElementById('modalOverlay').classList.remove('hidden');">+ Novo UsuÃ¡rio</button>
+                    <h3>Gerenciar Usuários</h3>
+                    <button class="btn-primary" onclick="document.getElementById('createUserModal').classList.remove('hidden'); document.getElementById('modalOverlay').classList.remove('hidden');">+ Novo Usuário</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
@@ -220,11 +220,11 @@ const views = {
                                 <th>Nome</th>
                                 <th>E-mail</th>
                                 <th>Perfil</th>
-                                <th>AÃ§Ãµes</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="usuariosList">
-                            <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">Carregando usuÃ¡rios...</td></tr>
+                            <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1rem;">Carregando usuários...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -234,10 +234,10 @@ const views = {
             <div class="view-section active" id="view-permissoes">
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <div>
-                        <h3>PermissÃµes de UsuÃ¡rios</h3>
+                        <h3>Permissões de Usuários</h3>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Configure o que cada perfil pode acessar e executar no sistema.</p>
                     </div>
-                    <button class="btn-primary" onclick="savePermissions()">Salvar AlteraÃ§Ãµes</button>
+                    <button class="btn-primary" onclick="savePermissions()">Salvar Alterações</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0; overflow-x: auto;">
@@ -246,7 +246,7 @@ const views = {
                             <tr style="background: var(--bg-body);">
                                 <th style="text-align: left; padding: 1.2rem;">Recurso / Tela</th>
                                 <th style="text-align: center; width: 150px;">Administrador</th>
-                                <th style="text-align: center; width: 150px;">UsuÃ¡rio PadrÃ£o</th>
+                                <th style="text-align: center; width: 150px;">Usuário Padrão</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -254,14 +254,14 @@ const views = {
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 1.2rem;">
                                     <strong>Tela: Tarefas</strong><br>
-                                    <small style="color:var(--text-muted)">Acesso Ã  lista inicial de tarefas.</small>
+                                    <small style="color:var(--text-muted)">Acesso à lista inicial de tarefas.</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled style="cursor: not-allowed;"></td>
                                 <td style="text-align:center;"><input type="checkbox" checked></td>
                             </tr>
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 1.2rem;">
-                                    <strong>FunÃ§Ã£o: Criar Tarefas</strong><br>
+                                    <strong>Função: Criar Tarefas</strong><br>
                                     <small style="color:var(--text-muted)">Buscar dados na API do Condado e criar novas tarefas.</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
@@ -269,8 +269,8 @@ const views = {
                             </tr>
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 1.2rem;">
-                                    <strong>FunÃ§Ã£o: Distribuir Tarefas</strong><br>
-                                    <small style="color:var(--text-muted)">Atribuir tarefas para outros usuÃ¡rios.</small>
+                                    <strong>Função: Distribuir Tarefas</strong><br>
+                                    <small style="color:var(--text-muted)">Atribuir tarefas para outros usuários.</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
                                 <td style="text-align:center;"><input type="checkbox" id="perm_distribute_task_user"></td>
@@ -284,11 +284,11 @@ const views = {
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
                                 <td style="text-align:center;"><input type="checkbox" checked id="perm_view_kanban_user"></td>
                             </tr>
-                            <!-- RelatÃ³rios -->
+                            <!-- Relatórios -->
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 1.2rem;">
-                                    <strong>Tela: RelatÃ³rios</strong><br>
-                                    <small style="color:var(--text-muted)">VisualizaÃ§Ã£o de relatÃ³rios e mÃ©tricas.</small>
+                                    <strong>Tela: Relatórios</strong><br>
+                                    <small style="color:var(--text-muted)">Visualização de relatórios e métricas.</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
                                 <td style="text-align:center;"><input type="checkbox" id="perm_view_reports_user"></td>
@@ -302,11 +302,11 @@ const views = {
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
                                 <td style="text-align:center;"><input type="checkbox" id="perm_view_trash_user"></td>
                             </tr>
-                            <!-- ConfiguraÃ§Ãµes -->
+                            <!-- Configurações -->
                             <tr>
                                 <td style="padding: 1.2rem;">
-                                    <strong>Tela: ConfiguraÃ§Ãµes</strong><br>
-                                    <small style="color:var(--text-muted)">Pode acessar a tela de configuraÃ§Ãµes (O acesso aos menus de admin Ã© sempre restrito).</small>
+                                    <strong>Tela: Configurações</strong><br>
+                                    <small style="color:var(--text-muted)">Pode acessar a tela de configurações (O acesso aos menus de admin é sempre restrito).</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled></td>
                                 <td style="text-align:center;"><input type="checkbox" checked id="perm_view_config_user"></td>
@@ -324,11 +324,11 @@ const views = {
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Como fazer as tarefas?</h4>
                     <div style="margin-bottom: 1rem;">
                         <strong style="display:block; margin-bottom: 0.25rem;">1. Criar Tarefas</strong>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">Clique em "Criar Tarefas" no menu Tarefas para puxar os dados de clientes do Condado via integraÃ§Ã£o API.</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">Clique em "Criar Tarefas" no menu Tarefas para puxar os dados de clientes do Condado via integração API.</p>
                     </div>
                     <div style="margin-bottom: 1rem;">
                         <strong style="display:block; margin-bottom: 0.25rem;">2. Distribuir Tarefas</strong>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">Na modal de pesquisa, selecione os clientes desejados nos checkboxes e atribua em massa a um usuÃ¡rio.</p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">Na modal de pesquisa, selecione os clientes desejados nos checkboxes e atribua em massa a um usuário.</p>
                     </div>
                     <div style="margin-bottom: 1rem;">
                         <strong style="display:block; margin-bottom: 0.25rem;">3. Workflow (Kanban)</strong>
@@ -338,24 +338,24 @@ const views = {
 
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Abrir Chamado</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Seu usuÃ¡rio e o horÃ¡rio da abertura serÃ£o registrados e anexados automaticamente ao enviar.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Seu usuário e o horário da abertura serão registrados e anexados automaticamente ao enviar.</p>
                     
                     <div class="input-group">
                         <label>Assunto</label>
                         <input type="text" id="ticketSubject" class="form-control" placeholder="Descreva o problema brevemente">
                     </div>
                     <div class="input-group">
-                        <label>DescriÃ§Ã£o detalhada</label>
-                        <textarea id="ticketMessage" class="form-control" rows="5" placeholder="ForneÃ§a os detalhes e passos para reproduzir o problema..."></textarea>
+                        <label>Descrição detalhada</label>
+                        <textarea id="ticketMessage" class="form-control" rows="5" placeholder="Forneça os detalhes e passos para reproduzir o problema..."></textarea>
                     </div>
-                    <button class="btn-primary" style="width: 100%;" onclick="alert('Chamado aberto com sucesso! Enviando ticket em nome de: ${user ? user.name : 'Desconhecido'} Ã s ' + new Date().toLocaleString())">Enviar Chamado</button>
+                    <button class="btn-primary" style="width: 100%;" onclick="alert('Chamado aberto com sucesso! Enviando ticket em nome de: ${user ? user.name : 'Desconhecido'} às ' + new Date().toLocaleString())">Enviar Chamado</button>
                 </div>
             </div>
         </div>`
 };
 
 function loadView(viewName) {
-    viewContainer.innerHTML = views[viewName] || '<div>NÃ£o encontrado</div>';
+    viewContainer.innerHTML = views[viewName] || '<div>Não encontrado</div>';
 
     // Setup view specific events
     if (viewName === 'tarefas') {
@@ -373,7 +373,7 @@ function loadView(viewName) {
     }
 }
 
-// Event Delegation para o botÃ£o "Criar Tarefas" que Ã© injetado dinamicamente
+// Event Delegation para o botão "Criar Tarefas" que é injetado dinamicamente
 document.addEventListener('click', (e) => {
     if (e.target.closest('#btnShowCreateTask')) {
         openCreateTaskModal();
@@ -421,16 +421,16 @@ window.savePermissions = function () {
         .then(data => {
             if (data.success) {
                 window.appPermissions = perms;
-                alert("PermissÃµes de acesso para UsuÃ¡rio PadrÃ£o foram salvas com sucesso para todos os usuÃ¡rios!");
+                alert("Permissões de acesso para Usuário Padrão foram salvas com sucesso para todos os usuários!");
             }
         })
         .catch(e => {
-            alert("Erro ao salvar permissÃµes no servidor.");
+            alert("Erro ao salvar permissões no servidor.");
         });
 };
 
 
-// VariÃ¡vel global para armazenar os usuÃ¡rios e poder editÃ¡-los sem chamar API de novo
+// Variável global para armazenar os usuários e poder editá-los sem chamar API de novo
 window.currentLoadedUsers = [];
 
 // --- Users Logic ---
@@ -450,7 +450,7 @@ window.loadUsers = async function () {
                             <tr>
                                 <td>${u.name}</td>
                                 <td>${u.email}</td>
-                                <td><span class="label" style="background-color: ${u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)'};">${u.role === 'admin' ? 'Administrador' : 'UsuÃ¡rio'}</span></td>
+                                <td><span class="label" style="background-color: ${u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)'};">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
                                 <td>
                                     <button class="btn-secondary btn-sm" onclick="editUser(${u.id})">Editar</button>
                                     <button class="btn-secondary btn-sm danger-text" style="margin-left:5px;" onclick="deleteUser(${u.id})">Excluir</button>
@@ -460,10 +460,10 @@ window.loadUsers = async function () {
                 });
             }
         } else {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuÃ¡rio encontrado.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>';
         }
     } catch (e) {
-        console.error("Falha ao carregar usuÃ¡rios", e);
+        console.error("Falha ao carregar usuários", e);
         if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Erro ao conectar com o banco de dados.</td></tr>';
     }
 };
@@ -477,7 +477,7 @@ window.saveUser = async function () {
     const role = document.getElementById('newUserRole').value;
 
     if (!name || !email || (!password && !window.currentEditingUserId)) {
-        alert("Preencha nome e e-mail (a senha Ã© obrigatÃ³ria para novos usuÃ¡rios).");
+        alert("Preencha nome e e-mail (a senha é obrigatória para novos usuários).");
         return;
     }
 
@@ -497,7 +497,7 @@ window.saveUser = async function () {
         const data = await res.json();
 
         if (data && data.success) {
-            alert(`UsuÃ¡rio ${window.currentEditingUserId ? 'atualizado' : 'cadastrado'} com sucesso!`);
+            alert(`Usuário ${window.currentEditingUserId ? 'atualizado' : 'cadastrado'} com sucesso!`);
             document.getElementById('createUserModal').classList.add('hidden');
             document.getElementById('modalOverlay').classList.add('hidden');
             document.getElementById('formCreateUser').reset();
@@ -519,16 +519,16 @@ window.editUser = function (id) {
     window.currentEditingUserId = id;
     document.getElementById('newUserName').value = userToEdit.name;
     document.getElementById('newUserEmail').value = userToEdit.email;
-    document.getElementById('newUserPassword').value = ''; // Deixa em branco, preenche sÃ³ se for trocar
+    document.getElementById('newUserPassword').value = ''; // Deixa em branco, preenche só se for trocar
     document.getElementById('newUserRole').value = userToEdit.role;
 
-    document.querySelector('#createUserModal h3').innerText = "Editar UsuÃ¡rio";
+    document.querySelector('#createUserModal h3').innerText = "Editar Usuário";
     document.getElementById('modalOverlay').classList.remove('hidden');
     document.getElementById('createUserModal').classList.remove('hidden');
 };
 
 window.deleteUser = async function (id) {
-    if (!confirm("Tem certeza que deseja excluir este usuÃ¡rio?")) return;
+    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
 
     try {
         const formData = new FormData();
@@ -541,10 +541,10 @@ window.deleteUser = async function (id) {
         const data = await res.json();
 
         if (data && data.success) {
-            alert("UsuÃ¡rio excluÃ­do com sucesso!");
+            alert("Usuário excluído com sucesso!");
             loadUsers();
         } else {
-            alert(data.message || 'Erro ao excluir usuÃ¡rio.');
+            alert(data.message || 'Erro ao excluir usuário.');
         }
     } catch (e) {
         console.error(e);
@@ -552,13 +552,13 @@ window.deleteUser = async function (id) {
     }
 };
 
-// Reseta o modal ao abrir pelo botÃ£o "Novo UsuÃ¡rio"
+// Reseta o modal ao abrir pelo botão "Novo Usuário"
 const btnNovoUser = document.querySelector('[onclick="document.getElementById(\'modalOverlay\').classList.remove(\'hidden\'); document.getElementById(\'createUserModal\').classList.remove(\'hidden\')"]');
 if (btnNovoUser) {
     btnNovoUser.onclick = () => {
         window.currentEditingUserId = null;
         document.getElementById('formCreateUser').reset();
-        document.querySelector('#createUserModal h3').innerText = "Novo UsuÃ¡rio";
+        document.querySelector('#createUserModal h3').innerText = "Novo Usuário";
         document.getElementById('modalOverlay').classList.remove('hidden');
         document.getElementById('createUserModal').classList.remove('hidden');
     };
@@ -617,12 +617,12 @@ window.restoreTrash = async function (id) {
 }
 
 window.forceDeleteTrash = async function (id) {
-    if (confirm('Tem certeza que deseja excluir PERMANENTEMENTE? Esta aÃ§Ã£o nÃ£o pode ser desfeita.')) {
+    if (confirm('Tem certeza que deseja excluir PERMANENTEMENTE? Esta ação não pode ser desfeita.')) {
         try {
             const formData = new FormData();
             formData.append('task_id', id);
             await fetch('api/tasks.php?action=force_delete', { method: 'POST', body: formData });
-            alert('Item excluÃ­do para sempre.');
+            alert('Item excluído para sempre.');
             loadLixeira();
         } catch (e) {
             console.error(e);
@@ -631,12 +631,12 @@ window.forceDeleteTrash = async function (id) {
 }
 
 window.emptyTrash = async function () {
-    alert('A opÃ§Ã£o de esvaziar lixeira foi desabilitada temporariamente por seguranÃ§a.');
+    alert('A opção de esvaziar lixeira foi desabilitada temporariamente por segurança.');
 }
 
 // --- Delete Column ---
 window.deleteColumn = function (status_key) {
-    if (confirm('Deseja excluir esta coluna inteira? Ela serÃ¡ movida para a Lixeira.')) {
+    if (confirm('Deseja excluir esta coluna inteira? Ela será movida para a Lixeira.')) {
         const col = localColumns.find(c => c.status_key === status_key);
         if (col) {
             // Add to trash mock
@@ -723,10 +723,10 @@ async function fetchCondadoData(searchTerm = '') {
     if (isMockFallback) {
         // Mock de dados (Fallback Client-side)
         let mockData = [
-            { property_name: 'Cond. Bela Vista', client_code: '1001', client_name: 'JoÃ£o Silva (Mock JS)', value: 450.00 },
+            { property_name: 'Cond. Bela Vista', client_code: '1001', client_name: 'João Silva (Mock JS)', value: 450.00 },
             { property_name: 'Cond. Sol Nascente', client_code: '1002', client_name: 'Maria Oliveira (Mock JS)', value: 380.00 },
             { property_name: 'Cond. Bosque das Flores', client_code: '1003', client_name: 'Carlos Santos (Mock JS)', value: 520.00 },
-            { property_name: 'Cond. Morada dos PÃ¡ssaros', client_code: '1004', client_name: 'Ana Souza (Mock JS)', value: 310.00 }
+            { property_name: 'Cond. Morada dos Pássaros', client_code: '1004', client_name: 'Ana Souza (Mock JS)', value: 310.00 }
         ];
 
         if (searchTerm) {
@@ -753,13 +753,13 @@ async function fetchCondadoData(searchTerm = '') {
     // Se a API retornar um aviso (ex: falha de banco usando mock do PHP)
     let warningHtml = '';
     if (result.warning) {
-        warningHtml = `<p style="color: #92400E; background: #FEF3C7; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem;">âš ï¸ ${result.warning}</p>`;
+        warningHtml = `<p style="color: #92400E; background: #FEF3C7; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem;">�a�️ ${result.warning}</p>`;
     }
 
     const data = result.data || [];
 
     if (data.length === 0) {
-        container.innerHTML = warningHtml + '<p style="text-align: center; padding: 2rem;">Nenhum cliente/condomÃ­nio encontrado.</p>';
+        container.innerHTML = warningHtml + '<p style="text-align: center; padding: 2rem;">Nenhum cliente/condomínio encontrado.</p>';
         return;
     }
 
@@ -767,11 +767,11 @@ async function fetchCondadoData(searchTerm = '') {
             <table class="data-table">
                 <tr>
                     <th><input type="checkbox" id="checkAll"></th>
-                    <th>CÃ³d. ImÃ³vel</th>
-                    <th>ImÃ³vel / CondomÃ­nio</th>
+                    <th>Cód. Imóvel</th>
+                    <th>Imóvel / Condomínio</th>
                     <th>Cliente</th>
                     <th>Bloco/Apto</th>
-                    <th>SituaÃ§Ã£o</th>
+                    <th>Situação</th>
                 </tr>`;
 
     data.forEach((row) => {
@@ -785,7 +785,7 @@ async function fetchCondadoData(searchTerm = '') {
                         data-bloco="${row.bloco || ''}"
                         data-apto="${row.apto || ''}"
                         data-situacao="${row.situacao || ''}"
-                        data-type="${row.type || 'CobranÃ§a'}"></td>
+                        data-type="${row.type || 'Cobrança'}"></td>
                     <td>${row.property_code || ''}</td>
                     <td>${row.property_name}</td>
                     <td>${row.client_name}</td>
@@ -813,16 +813,16 @@ if (btnDistribute) {
         distributeModal.classList.remove('hidden');
 
         const selectUser = document.getElementById('assignToUser');
-        selectUser.innerHTML = '<option value="">Carregando usuÃ¡rios...</option>';
+        selectUser.innerHTML = '<option value="">Carregando usuários...</option>';
 
         const localUsers = window.currentLoadedUsers || [];
         if (localUsers.length > 0) {
-            selectUser.innerHTML = '<option value="">-- Selecione um usuÃ¡rio --</option>';
+            selectUser.innerHTML = '<option value="">-- Selecione um usuário --</option>';
             localUsers.forEach(u => {
-                selectUser.innerHTML += `<option value="${u.id}">${u.name} (${u.role === 'admin' ? 'Administrador' : 'UsuÃ¡rio'})</option>`;
+                selectUser.innerHTML += `<option value="${u.id}">${u.name} (${u.role === 'admin' ? 'Administrador' : 'Usuário'})</option>`;
             });
         } else {
-            selectUser.innerHTML = '<option value="">-- VÃ¡ na tela de UsuÃ¡rios e cadastre alguÃ©m --</option>';
+            selectUser.innerHTML = '<option value="">-- Vá na tela de Usuários e cadastre alguém --</option>';
         }
     };
 }
@@ -832,14 +832,14 @@ if (btnConfirmDistribute) {
     btnConfirmDistribute.onclick = () => {
         const userId = document.getElementById('assignToUser').value;
         if (!userId) {
-            alert('Selecione um usuÃ¡rio.');
+            alert('Selecione um usuário.');
             return;
         }
 
         const checked = document.querySelectorAll('.task-check:checked');
 
         const tasksToSave = Array.from(checked).map(cb => ({
-            property_name: cb.getAttribute('data-name') || 'ImÃ³vel Desconhecido',
+            property_name: cb.getAttribute('data-name') || 'Imóvel Desconhecido',
             client_code: cb.value || '0',
             client_name: cb.getAttribute('data-client') || 'Sem Cliente',
             bloco: cb.getAttribute('data-bloco') || '',
@@ -861,7 +861,7 @@ if (btnConfirmDistribute) {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(`Sucesso! ${tasksToSave.length} tarefa(s) distribuÃ­da(s) com sucesso.`);
+                    alert(`Sucesso! ${tasksToSave.length} tarefa(s) distribuída(s) com sucesso.`);
                     document.getElementById('distributeTasksModal').classList.add('hidden');
                     const modalOverlay = document.getElementById('modalOverlay');
                     if (modalOverlay) modalOverlay.classList.add('hidden');
@@ -873,7 +873,7 @@ if (btnConfirmDistribute) {
             })
             .catch(e => {
                 console.error(e);
-                alert("Falha ao se comunicar com a API de distribuiÃ§Ã£o.");
+                alert("Falha ao se comunicar com a API de distribuição.");
             });
 
         document.getElementById('distributeTasksModal').classList.add('hidden');
@@ -952,7 +952,7 @@ window.loadTarefas = async function () {
             if (data && data.success) {
                 window.currentLoadedTasks = data.tasks;
             } else {
-                console.error("API falhou ou nÃ£o retornou success", data);
+                console.error("API falhou ou não retornou success", data);
                 if (data && data.error) {
                     alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
                 }
@@ -960,7 +960,7 @@ window.loadTarefas = async function () {
             }
         } catch (jsonErr) {
             console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
-            alert("Erro ao carregar tarefas. Resposta do servidor nÃ£o Ã© JSON vÃ¡lido: " + text.substring(0, 150));
+            alert("Erro ao carregar tarefas. Resposta do servidor não é JSON válido: " + text.substring(0, 150));
             window.currentLoadedTasks = [];
         }
     } catch (e) {
@@ -985,7 +985,7 @@ window.loadTarefas = async function () {
         if (!isAdmin && !isAssigned && !isShared) return;
 
         let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
-        let userName = assignedUser ? assignedUser.name : 'NÃ£o atribuÃ­do';
+        let userName = assignedUser ? assignedUser.name : 'Não atribuído';
 
         if (sharedArray.length > 0) {
             userName += ` (+${sharedArray.length})`;
@@ -1025,9 +1025,9 @@ window.loadTarefas = async function () {
             const diffTime = due - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             if (diffDays === 1) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhÃ£">âš ï¸ Vence AmanhÃ£</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">�a�️ Vence Amanhã</span>`;
             } else if (diffDays < 0) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">âš ï¸ Atrasado</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">�a�️ Atrasado</span>`;
             }
         }
 
@@ -1119,11 +1119,11 @@ window.loadKanbanCards = async function () {
         const isAssigned = user && t.assigned_to == user.id;
         const isShared = user && sharedArray.includes(String(user.id));
 
-        // Admin vÃª todos os cards. UsuÃ¡rio comum vÃª sÃ³ os atribuÃ­dos a ele ou compartilhados com ele.
+        // Admin vê todos os cards. Usuário comum vê só os atribuídos a ele ou compartilhados com ele.
         if (!isAdmin && !isAssigned && !isShared) return;
 
         let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
-        let userName = assignedUser ? assignedUser.name : 'NÃ£o atribuÃ­do';
+        let userName = assignedUser ? assignedUser.name : 'Não atribuído';
 
         if (sharedArray.length > 0) {
             userName += ` (+${sharedArray.length})`;
@@ -1152,8 +1152,8 @@ window.loadKanbanCards = async function () {
                         const today = new Date(); today.setHours(0, 0, 0, 0);
                         const due = new Date(t.due_date + 'T00:00:00');
                         const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">âš ï¸ Vence AmanhÃ£</span>`;
-                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">âš ï¸ Atrasado</span>`;
+                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">�a�️ Vence Amanhã</span>`;
+                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">�a�️ Atrasado</span>`;
                     }
                     return w ? '<div style="margin-top:5px;">' + w + '</div>' : '';
                 }()}
@@ -1191,7 +1191,7 @@ window.openTaskDetails = function (taskId) {
 
     let localUsers = window.currentLoadedUsers || [];
     let assignedUser = localUsers.find(u => u.id == t.assigned_to);
-    let userName = assignedUser ? assignedUser.name : 'NÃ£o atribuÃ­do';
+    let userName = assignedUser ? assignedUser.name : 'Não atribuído';
 
     modalOverlay.classList.remove('hidden');
     document.getElementById('taskDetailsModal').classList.remove('hidden');
@@ -1213,7 +1213,7 @@ window.openTaskDetails = function (taskId) {
     let blocoApto = [t.bloco, t.apto].filter(Boolean).join(' / ');
     let extraInfo = '';
     if (blocoApto) extraInfo += `<p><strong>Bloco/Apto:</strong> ${blocoApto}</p>`;
-    if (t.situacao) extraInfo += `<p><strong>SituaÃ§Ã£o:</strong> <span class="label" style="background:var(--bg-body); color:var(--text-main); border:1px solid var(--border)">${t.situacao}</span></p>`;
+    if (t.situacao) extraInfo += `<p><strong>Situação:</strong> <span class="label" style="background:var(--bg-body); color:var(--text-main); border:1px solid var(--border)">${t.situacao}</span></p>`;
 
     let created_at_br = t.created_at || 'N/A';
     if (created_at_br !== 'N/A') {
@@ -1227,7 +1227,7 @@ window.openTaskDetails = function (taskId) {
     }
 
     document.getElementById('taskDetailsContent').innerHTML = `
-            <p><strong>ImÃ³vel:</strong> ${t.name || 'N/A'}</p>
+            <p><strong>Imóvel:</strong> ${t.name || 'N/A'}</p>
             <p><strong>Cliente:</strong> ${t.client || 'N/A'}</p>
             ${extraInfo}
             <p><strong>Tipo:</strong> ${t.type || 'N/A'}</p>
@@ -1237,7 +1237,7 @@ window.openTaskDetails = function (taskId) {
                     ${statusOptionsHtml}
                 </select>
             </p>
-            <p><strong>AtribuÃ­do a:</strong> <span id="lblAssignedUser">${userName}</span></p>
+            <p><strong>Atribuído a:</strong> <span id="lblAssignedUser">${userName}</span></p>
             <p><strong>Criada em:</strong> ${created_at_br}</p>
             <div id="dynamicClientDetails" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <p style="color:var(--text-muted); font-style:italic;">Carregando detalhes do cliente...</p>
@@ -1286,15 +1286,15 @@ window.openTaskDetails = function (taskId) {
             })
             .catch(err => {
                 const container = document.getElementById('dynamicClientDetails');
-                if (container) container.innerHTML = `<p style="color:var(--danger)">Erro de conexÃ£o ao carregar detalhes.</p>`;
+                if (container) container.innerHTML = `<p style="color:var(--danger)">Erro de conexão ao carregar detalhes.</p>`;
             });
     } else {
         const container = document.getElementById('dynamicClientDetails');
-        if (container) container.innerHTML = `<p style="color:var(--text-muted)">Tarefa sem cÃ³digo de cliente associado.</p>`;
+        if (container) container.innerHTML = `<p style="color:var(--text-muted)">Tarefa sem código de cliente associado.</p>`;
     }
 
 
-    // Renderizar a lista de usuÃ¡rios no menu lateral para reatribuir e compartilhar
+    // Renderizar a lista de usuários no menu lateral para reatribuir e compartilhar
     let assignContainer = document.getElementById('assignUserContainer');
     if (assignContainer) {
         let optionsHtml = '<option value="">-- Selecione --</option>';
@@ -1368,14 +1368,14 @@ window.openTaskDetails = function (taskId) {
                     t.start_date = start;
                     t.due_date = due;
                     if (typeof logActivity === 'function') logActivity(`Detalhes da tarefa atualizados (Data/Obs)`);
-                    alert('AlteraÃ§Ãµes salvas com sucesso!');
+                    alert('Alterações salvas com sucesso!');
                     await reloadUIAndModal(null);
                 } else {
-                    alert('Erro ao salvar alteraÃ§Ãµes.');
+                    alert('Erro ao salvar alterações.');
                 }
             } catch (e) {
                 console.error(e);
-                alert('Falha na comunicaÃ§Ã£o ao tentar salvar.');
+                alert('Falha na comunicação ao tentar salvar.');
             }
         };
     }
@@ -1384,7 +1384,7 @@ window.openTaskDetails = function (taskId) {
     const btnDeleteTask = document.getElementById('btnDeleteTask');
     if (btnDeleteTask) {
         btnDeleteTask.onclick = async () => {
-            if (confirm('Tem certeza que deseja excluir esta tarefa? Ela serÃ¡ enviada para a Lixeira.')) {
+            if (confirm('Tem certeza que deseja excluir esta tarefa? Ela será enviada para a Lixeira.')) {
                 try {
                     const formData = new FormData();
                     formData.append('task_id', taskId);
@@ -1401,7 +1401,7 @@ window.openTaskDetails = function (taskId) {
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Falha na comunicaÃ§Ã£o com o servidor.');
+                    alert('Falha na comunicação com o servidor.');
                 }
             }
         };
@@ -1495,7 +1495,7 @@ window.logActivity = function (message) {
     if (!logList) return;
     const li = document.createElement('li');
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    li.innerHTML = `<strong>VocÃª:</strong> ${message} <span style="font-size: 0.7rem; color: var(--text-muted)">(${time})</span>`;
+    li.innerHTML = `<strong>Você:</strong> ${message} <span style="font-size: 0.7rem; color: var(--text-muted)">(${time})</span>`;
     logList.prepend(li); // put at top
 }
 
@@ -1593,7 +1593,7 @@ if (btnSaveUpdate) {
         newUpdate.style.backgroundColor = 'rgba(0,0,0,0.02)';
         newUpdate.innerHTML = `
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
-                    <strong>VocÃª</strong> - ${new Date().toLocaleString()}
+                    <strong>Você</strong> - ${new Date().toLocaleString()}
                 </div>
                 <p style="font-size: 0.9rem;">${content}</p>
             `;
@@ -1612,13 +1612,13 @@ if (btnSaveUpdate) {
                 body: formData
             });
         } catch (e) {
-            console.log('API nÃ£o conectada, registrado apenas visualmente.', e);
+            console.log('API não conectada, registrado apenas visualmente.', e);
         }
     };
 } // <--- ESTA CHAVE ESTAVA FALTANDO!
 
 // 4. Excluir Tarefa
-// (O evento de exclusÃ£o foi movido para openTaskDetails para obter acesso ao taskId)
+// (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
 
 window.loadRelatorios = async function () {
     const container = document.getElementById('reportsContainer');
@@ -1676,7 +1676,7 @@ window.loadRelatorios = async function () {
                         </div>
                         
                         <div class="card" style="padding: 20px;">
-                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Top 5 ImÃ³veis</h4>
+                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Top 5 Imóveis</h4>
                             ${imoveisHtml}
                         </div>
                         
@@ -1687,13 +1687,13 @@ window.loadRelatorios = async function () {
         }
     } catch (e) {
         console.error(e);
-        container.innerHTML = '<p style="text-align:center; color:red;">Falha de comunicaÃ§Ã£o.</p>';
+        container.innerHTML = '<p style="text-align:center; color:red;">Falha de comunicação.</p>';
     }
 };
 
 // Default view (called at the end to ensure all functions are defined)
 
-// Carregar usuÃ¡rios globalmente para os dropdowns
+// Carregar usuários globalmente para os dropdowns
 if (typeof window.loadUsers === 'function') {
     window.loadUsers().then(() => {
         loadView('tarefas');
@@ -1727,6 +1727,6 @@ window.handleAvatarUpload = async function (e) {
             }
         } catch (err) {
             console.error(err);
-            alert('Falha na comunicação ao atualizar avatar.');
+            alert('Falha na comunica��o ao atualizar avatar.');
         }
     };
