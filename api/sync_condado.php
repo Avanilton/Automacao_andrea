@@ -32,25 +32,26 @@ try {
 
     $pdoCondado = getCondadoConnection();
 
-    // 2. Sincronizar Clientes Inadimplentes com todos os dados calculados
+    // 2. Sincronizar Clientes Inadimplentes com todos os dados calculados (Versão Otimizada)
     $stmtClientes = $pdoCondado->query("
         SELECT 
             c.idCliente as client_code, 
             c.idImovel as property_code,
             COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
             c.nomeCliente as client_name, 
-            (SELECT b.BLOCO FROM tbbloco b WHERE b.IDIMOVEL = c.idImovel AND b.IDEMPRESA = c.idEmpresa LIMIT 1) as bloco,
-            (SELECT s.SITUACAO FROM tbsituacao s WHERE s.IDEMPRESA = c.idEmpresa LIMIT 1) as situacao,
-            c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3
+            c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
+            b_loc.BLOCO as bloco,
+            s_sit.SITUACAO as situacao
         FROM tbcliente c
+        INNER JOIN (
+            SELECT DISTINCT idCliente 
+            FROM tbboleto 
+            WHERE pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()
+        ) bol ON bol.idCliente = c.idCliente
         LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-        WHERE EXISTS (
-            SELECT 1 FROM tbboleto b 
-            WHERE b.idCliente = c.idCliente 
-            AND b.pago = 0 
-            AND b.cancelado = 0 
-            AND b.dataVecto < CURDATE()
-        )
+        LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
+        LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
+        GROUP BY c.idCliente
     ");
     $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
     
