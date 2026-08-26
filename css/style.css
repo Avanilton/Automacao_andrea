@@ -833,3 +833,10 @@ a {
     transform: translateY(-2px);
     box-shadow: 0 15px 25px -5px rgba(212, 175, 55, 0.4);
 }
+
+/* Theme Logos */
+html[data-theme='light'] .logo-dark { display: none !important; }
+html[data-theme='light'] .logo-light { display: block; }
+html[data-theme='dark'] .logo-light { display: none !important; }
+html[data-theme='dark'] .logo-dark { display: block; }
+.logo-wrapper { display: flex; align-items: center; text-decoration: none; }
