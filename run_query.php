@@ -8,41 +8,29 @@ try {
     SELECT
         SUM(
             CASE
-                WHEN M.tipoMvto = 2
-                    THEN (M.valorRecebido - M.troco)
+                WHEN M.TIPOMVTO = 2
+                    THEN (M.VALORRECEBIDO - M.TROCO)
+                ELSE 0
             END
         ) AS valorCredito,
 
         SUM(
             CASE
-                WHEN M.tipoMvto = 1
-                    THEN M.valorMvto
+                WHEN M.TIPOMVTO = 1
+                    THEN M.VALORMVTO
+                ELSE 0
             END
-        ) AS valorDebito,
+        ) AS valorDebito
 
-        T.tipoPgto,
-        M.idTipoPgto
-
-    FROM tbCaixaMovi M,
-         tbTipoPgto T
-
-    WHERE M.id.idEmpresa = T.idEmpresa
-      AND M.idTipoPgto = T.id.idTipoPgto
-      AND M.id.idFuncionario = 1
-      AND M.id.idEmpresa = 75
-      AND M.transferido = false
-
-    GROUP BY
-        T.tipoPgto,
-        M.idTipoPgto;
+    FROM tbCaixaMovi M
+    WHERE M.IDEMPRESA = 75;
     ";
 
     $query2 = "
     SELECT
         *
     FROM tbConta
-    WHERE inativo = 0
-      AND id.idEmpresa = 75;
+    WHERE IDEMPRESA = 75;
     ";
 
     $results = [];
