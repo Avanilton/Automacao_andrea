@@ -85,7 +85,7 @@ if ($action === 'fetch_client_details') {
         $stmtTaxas->execute([$client_code]);
         $taxas = $stmtTaxas->fetch();
         
-        $sqlBoletos = "SELECT numero, valor, dataVecto 
+        $sqlBoletos = "SELECT idBoleto, NUMERODOCUMENTO as numero_doc, total as valor, dataVecto 
                        FROM tbboleto 
                        WHERE idCliente = ? AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()
                        ORDER BY dataVecto ASC";

@@ -1267,7 +1267,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             data.boletos.forEach(b => {
                                 const venc = b.dataVecto ? b.dataVecto.split('-').reverse().join('/') : 'N/D';
                                 const valor = parseFloat(b.valor || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-                                detailsHtml += `<li>Boleto <strong>#${b.numero}</strong> - ${valor} (Venceu em: ${venc})</li>`;
+                                const numBoleto = b.numero_doc || b.idBoleto || 'N/D';
+                                detailsHtml += `<li>Boleto <strong>#${numBoleto}</strong> - ${valor} (Venceu em: ${venc})</li>`;
                             });
                             detailsHtml += `</ul></div>`;
                         }
