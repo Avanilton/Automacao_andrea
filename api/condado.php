@@ -14,49 +14,39 @@ if ($action === 'fetch_data') {
     $search = $_GET['search'] ?? '';
     
     try {
-        $pdoCondado = getCondadoConnection();
+        $pdoLocal = getDBConnection(); // LER DO CACHE LOCAL!
         
         $sql = "SELECT 
-                    COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
-                    c.idImovel as property_code,
-                    c.idCliente as client_code, 
-                    c.nomeCliente as client_name, 
+                    property_name, 
+                    property_code,
+                    client_code, 
+                    client_name, 
                     0 as value,
-                    (SELECT b.BLOCO FROM tbbloco b WHERE b.IDIMOVEL = c.idImovel AND b.IDEMPRESA = c.idEmpresa LIMIT 1) as bloco,
+                    bloco,
                     '' as apto,
-                    (SELECT s.SITUACAO FROM tbsituacao s WHERE s.IDEMPRESA = c.idEmpresa LIMIT 1) as situacao
-                FROM tbcliente c
-                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-                WHERE EXISTS (SELECT 1 FROM tbboleto b WHERE b.idCliente = c.idCliente AND b.pago = 0 AND b.cancelado = 0 AND b.dataVecto < CURDATE())";
+                    situacao
+                FROM cache_clientes c";
                 
         $params = [];
         
         if (!empty($search)) {
-            $sql .= " AND (c.nomeCliente LIKE ? OR i.nomeFantasia LIKE ? OR c.idCliente LIKE ?)";
+            $sql .= " WHERE (c.client_name LIKE ? OR c.property_name LIKE ? OR c.client_code LIKE ?)";
             $searchTerm = '%' . $search . '%';
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
         
         $sql .= " LIMIT 50";
         
-        $stmt = $pdoCondado->prepare($sql);
+        $stmt = $pdoLocal->prepare($sql);
         $stmt->execute($params);
         $data = $stmt->fetchAll();
-        
-        // Remove duplicadas ou dados estranhos se os JOINs multiplicarem as linhas
-        // Como não sabemos a relação perfeita, vamos usar um hack para garantir unique clients
-        $uniqueData = [];
-        foreach($data as $row) {
-            $uniqueData[$row['client_code']] = $row;
-        }
-        $data = array_values($uniqueData);
         
         jsonResponse(['success' => true, 'data' => $data]);
         
     } catch (PDOException $e) {
         jsonResponse([
             'success' => false, 
-            'error' => 'Falha ao conectar no banco do Condado: ' . $e->getMessage()
+            'error' => 'Falha ao ler cache de clientes: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -68,28 +58,28 @@ if ($action === 'fetch_client_details') {
     }
     
     try {
-        $pdoCondado = getCondadoConnection();
+        $pdoLocal = getDBConnection(); // LER DO CACHE LOCAL
         
         // 1. Fetch Contact Data
         $sqlContact = "SELECT fonece, dddce, foneco, dddco, email, email2, email3 
-                       FROM tbcliente WHERE idCliente = ? LIMIT 1";
-        $stmtContact = $pdoCondado->prepare($sqlContact);
+                       FROM cache_clientes WHERE client_code = ? LIMIT 1";
+        $stmtContact = $pdoLocal->prepare($sqlContact);
         $stmtContact->execute([$client_code]);
         $contact = $stmtContact->fetch();
         
         // 2. Fetch Due Boletos (Taxas)
         $sqlTaxas = "SELECT COUNT(*) as boletos_em_atraso 
-                     FROM tbboleto 
-                     WHERE idCliente = ? AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()";
-        $stmtTaxas = $pdoCondado->prepare($sqlTaxas);
+                     FROM cache_boletos 
+                     WHERE client_code = ?";
+        $stmtTaxas = $pdoLocal->prepare($sqlTaxas);
         $stmtTaxas->execute([$client_code]);
         $taxas = $stmtTaxas->fetch();
         
-        $sqlBoletos = "SELECT idBoleto as numero_doc, total as valor, dataVecto 
-                       FROM tbboleto 
-                       WHERE idCliente = ? AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()
+        $sqlBoletos = "SELECT numero_doc, total as valor, dataVecto 
+                       FROM cache_boletos 
+                       WHERE client_code = ?
                        ORDER BY dataVecto ASC";
-        $stmtBoletos = $pdoCondado->prepare($sqlBoletos);
+        $stmtBoletos = $pdoLocal->prepare($sqlBoletos);
         $stmtBoletos->execute([$client_code]);
         $boletos = $stmtBoletos->fetchAll();
         
@@ -103,7 +93,7 @@ if ($action === 'fetch_client_details') {
     } catch (PDOException $e) {
         jsonResponse([
             'success' => false, 
-            'error' => 'Falha ao buscar detalhes no banco do Condado: ' . $e->getMessage()
+            'error' => 'Falha ao buscar detalhes no cache local: ' . $e->getMessage()
         ], 500);
     }
 }
