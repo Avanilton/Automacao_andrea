@@ -12,10 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const userAvatarEl = document.getElementById('sidebarAvatar');
             
             if (userNameEl) userNameEl.textContent = user.name;
-            if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrador' : 'UsuÃ¡rio';
-            if (userAvatarEl && user.name) userAvatarEl.textContent = user.name.charAt(0).toUpperCase();
-            
-            if (user.role === 'admin') {
+            if (userAvatarEl && user.name) {
+                if (user.avatar) {
+                    userAvatarEl.innerHTML = `<img src="${user.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                } else {
+                    userAvatarEl.textContent = user.name.charAt(0).toUpperCase();
+                }
+            }
                 const adminSubmenu = document.getElementById('adminSubmenu');
                 if (adminSubmenu) adminSubmenu.classList.remove('hidden');
                 const navUsuarios = document.getElementById('navUsuarios');
@@ -171,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label>Email</label>
                         <input type="email" class="form-control" value="${user ? user.email : ''}" readonly>
                     </div>
-                    <button class="btn-primary" onclick="alert('Perfil salvo!')">Salvar Perfil</button>
+                    <button class="btn-primary" style="margin-top: 1rem;" onclick="alert('Perfil salvo!')">Salvar Perfil</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -188,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label>Confirmar Nova Senha</label>
                         <input type="password" class="form-control">
                     </div>
-                    <button class="btn-primary" onclick="alert('Senha atualizada!')">Atualizar Senha</button>
+                    <button class="btn-primary" style="margin-top: 1rem;" onclick="alert('Senha atualizada!')">Atualizar Senha</button>
                 </div>
             </div>
             
@@ -1038,11 +1041,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.deleteServerTask = async function(id) {
-        if(confirm("Tem certeza que deseja excluir esta tarefa?")) {
+        if(confirm("Tem certeza que deseja mover esta tarefa para a Lixeira?")) {
             try {
                 const formData = new FormData();
                 formData.append('task_id', id);
-                await fetch('api/tasks.php?action=force_delete', { method: 'POST', body: formData });
+                await fetch('api/tasks.php?action=soft_delete', { method: 'POST', body: formData });
                 loadTarefas();
                 if (typeof loadKanbanCards === 'function') loadKanbanCards();
             } catch(e) { console.error(e); }
@@ -1696,3 +1699,32 @@ document.addEventListener('DOMContentLoaded', () => {
         loadView('tarefas');
     }
 });
+
+window.handleAvatarUpload = async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        let userStr = localStorage.getItem('cobranca_user');
+        let user = JSON.parse(userStr || '{}');
+        if (user && user.id) formData.append('id', user.id);
+        const res = await fetch('api/users.php?action=update_avatar', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            user.avatar = data.avatar;
+            localStorage.setItem('cobranca_user', JSON.stringify(user));
+            const userAvatarEl = document.getElementById('sidebarAvatar');
+            if (userAvatarEl) {
+                userAvatarEl.innerHTML = \<img src=\"\\" style=\"width:100%; height:100%; border-radius:50%; object-fit:cover;\">\;
+            }
+            alert('Avatar atualizado com sucesso!');
+        } else {
+            alert(data.message || 'Erro ao atualizar avatar.');
+        }
+    } catch(err) {
+        console.error(err);
+        alert('Falha na comunicação ao atualizar avatar.');
+    }
+};
+

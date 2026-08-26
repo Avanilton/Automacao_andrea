@@ -81,5 +81,34 @@ if ($action === 'delete') {
     }
 }
 
+if ($action === 'update_avatar') {
+    $id = $_POST['id'] ?? 0;
+    if (!$id && isset($_SESSION['user_id'])) {
+        $id = $_SESSION['user_id'];
+    }
+    
+    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['avatar'];
+        $type = mime_content_type($file['tmp_name']);
+        
+        if (strpos($type, 'image/') !== 0) {
+            jsonResponse(['success' => false, 'message' => 'Arquivo inválido. Escolha uma imagem.']);
+        }
+        
+        $data = file_get_contents($file['tmp_name']);
+        $base64 = 'data:' . $type . ';base64,' . base64_encode($data);
+        
+        try {
+            $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+            $stmt->execute([$base64, $id]);
+            
+            jsonResponse(['success' => true, 'avatar' => $base64]);
+        } catch (PDOException $e) {
+            jsonResponse(['success' => false, 'message' => 'Erro ao salvar avatar: ' . $e->getMessage()]);
+        }
+    }
+    jsonResponse(['success' => false, 'message' => 'Nenhum arquivo enviado.']);
+}
+
 jsonResponse(['error' => 'Ação inválida'], 404);
 ?>

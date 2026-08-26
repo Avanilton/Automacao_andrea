@@ -29,13 +29,7 @@
                 </button>
             </div>
 
-            <div class="user-profile-small">
-                <div class="avatar-circle" id="sidebarAvatar">U</div>
-                <div class="user-info">
-                    <span class="user-name" id="sidebarUserName">Usuário</span>
-                    <span class="user-role" id="sidebarUserRole">Role</span>
-                </div>
-            </div>
+
 
             <nav class="sidebar-nav">
                 <a href="#tarefas" class="nav-item active" data-view="tarefas">
@@ -118,6 +112,16 @@
                     <span>Ajuda</span>
                 </a>
             </nav>
+
+            <div class="user-profile-small" style="margin: 1rem 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <div class="avatar-circle" id="sidebarAvatar" style="position: relative; cursor: pointer; transition: opacity 0.2s;" title="Clique para trocar o avatar" onclick="document.getElementById('avatarUpload').click();" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">U</div>
+                <div class="user-info">
+                    <span class="user-name" id="sidebarUserName">Usuário</span>
+                    <span class="user-role" id="sidebarUserRole">Role</span>
+                </div>
+            </div>
+            
+            <input type="file" id="avatarUpload" style="display: none;" accept="image/*" onchange="handleAvatarUpload(event)">
 
             <div class="sidebar-footer">
                 <button id="themeToggleBtnSidebar" class="icon-btn theme-toggle" title="Tema">
