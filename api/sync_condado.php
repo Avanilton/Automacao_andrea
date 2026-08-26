@@ -70,37 +70,34 @@ try {
     } 
     elseif ($step === 2) {
         // ETAPA 2: Clientes
-        if ($offset === 0) {
+        if ($lastId === 0) {
             $pdoLocal->exec("TRUNCATE TABLE cache_clientes");
         }
 
-        echo "<p>Baixando dados dos clientes... (Processando lote: $offset)</p>";
+        echo "<p>Baixando dados de TODOS os clientes e condomínios... (Processando a partir do ID: $lastId)</p>";
+        flush();
 
-        // Pega um chunk de clientes que tem boleto
-        $stmtIds = $pdoLocal->prepare("SELECT DISTINCT client_code FROM cache_boletos ORDER BY client_code ASC LIMIT 500 OFFSET :offset");
-        $stmtIds->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmtIds->execute();
-        $clientIds = $stmtIds->fetchAll(PDO::FETCH_COLUMN);
+        $stmtClientes = $pdoCondado->prepare("
+            SELECT c.idCliente as client_code, c.idImovel as property_code,
+                   COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
+                   c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
+                   MIN(b_loc.BLOCO) as bloco, MIN(s_sit.SITUACAO) as situacao
+            FROM tbcliente c
+            LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
+            LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
+            LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
+            WHERE c.idCliente > :lastId
+            GROUP BY c.idCliente
+            ORDER BY c.idCliente ASC LIMIT 1000
+        ");
+        $stmtClientes->bindValue(':lastId', $lastId, PDO::PARAM_INT);
+        $stmtClientes->execute();
+        $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
 
-        if (empty($clientIds)) {
+        if (empty($clientes)) {
             echo "<p>Todos os clientes foram importados!</p>";
             echo "<meta http-equiv='refresh' content='1; url=?step=3'>";
         } else {
-            $in = str_repeat('?,', count($clientIds) - 1) . '?';
-            $stmtClientes = $pdoCondado->prepare("
-                SELECT c.idCliente as client_code, c.idImovel as property_code,
-                       COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
-                       c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
-                       b_loc.BLOCO as bloco, s_sit.SITUACAO as situacao
-                FROM tbcliente c
-                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-                LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
-                LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
-                WHERE c.idCliente IN ($in)
-            ");
-            $stmtClientes->execute($clientIds);
-            $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
-
             $insertCliente = $pdoLocal->prepare("
                 INSERT IGNORE INTO cache_clientes (client_code, property_code, property_name, client_name, bloco, situacao, fonece, dddce, foneco, dddco, email, email2, email3) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -111,11 +108,11 @@ try {
                     $c['bloco'], $c['situacao'], $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
                     $c['email'], $c['email2'], $c['email3']
                 ]);
+                $lastId = $c['client_code'];
             }
-
-            $newOffset = $offset + 500;
+            
             echo "<p>✔ Mais " . count($clientes) . " clientes inseridos. Redirecionando para o próximo lote...</p>";
-            echo "<meta http-equiv='refresh' content='1; url=?step=2&offset=$newOffset'>";
+            echo "<meta http-equiv='refresh' content='1; url=?step=2&lastId=$lastId'>";
         }
     } 
     elseif ($step === 3) {
