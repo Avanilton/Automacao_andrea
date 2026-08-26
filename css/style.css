@@ -14,6 +14,7 @@
     --text-muted: #5B6352;
     
     --border: #D8E0D0;
+    --danger: #ef4444;
     
     /* Kanban Status Colors */
     --status-todo-bg: #E5E7EB;
@@ -50,6 +51,7 @@
     --primary: #8CB046; /* Lighter moss green for visibility on dark backgrounds */
     
     --border: #3A4232;
+    --danger: #ef4444;
 
     --status-todo-bg: #374151;
     --status-todo-text: #E5E7EB;

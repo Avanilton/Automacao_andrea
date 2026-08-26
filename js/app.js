@@ -568,18 +568,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tbody) return;
         
         try {
-            // Em produção: fetch('api/tasks.php?action=list_trash')
-            if (trashItems.length === 0) {
+            const res = await fetch('api/tasks.php?action=list_trash');
+            const data = await res.json();
+            
+            if (data.tasks.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Lixeira vazia.</td></tr>';
                 return;
             }
             
             tbody.innerHTML = '';
-            trashItems.forEach(item => {
+            data.tasks.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><span class="label" style="background-color: ${item.type === 'Coluna' ? '#EC4899' : '#3B82F6'}; cursor:default;">${item.type}</span></td>
-                    <td>${item.title}</td>
+                    <td><span class="label" style="background-color: #3B82F6; cursor:default;">Tarefa</span></td>
+                    <td>${item.property_name || item.name || 'Desconhecido'}</td>
                     <td>${item.deleted_at}</td>
                     <td>
                         <button class="btn-secondary btn-sm" onclick="restoreTrash(${item.id})">Restaurar</button>
@@ -590,29 +592,40 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (e) {
             console.error(e);
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar lixeira.</td></tr>';
         }
     }
 
-    window.restoreTrash = function(id) {
-        trashItems = trashItems.filter(i => i.id !== id);
-        alert('Item restaurado com sucesso!');
-        loadLixeira();
-        loadKanbanCards();
+    window.restoreTrash = async function(id) {
+        try {
+            const formData = new FormData();
+            formData.append('task_id', id);
+            await fetch('api/tasks.php?action=restore', { method: 'POST', body: formData });
+            alert('Item restaurado com sucesso!');
+            loadLixeira();
+            loadTarefas();
+            loadKanbanCards();
+        } catch(e) {
+            console.error(e);
+        }
     }
 
-    window.forceDeleteTrash = function(id) {
+    window.forceDeleteTrash = async function(id) {
         if(confirm('Tem certeza que deseja excluir PERMANENTEMENTE? Esta ação não pode ser desfeita.')) {
-            trashItems = trashItems.filter(i => i.id !== id);
-            alert('Item excluído para sempre.');
-            loadLixeira();
+            try {
+                const formData = new FormData();
+                formData.append('task_id', id);
+                await fetch('api/tasks.php?action=force_delete', { method: 'POST', body: formData });
+                alert('Item excluído para sempre.');
+                loadLixeira();
+            } catch(e) {
+                console.error(e);
+            }
         }
     }
 
-    window.emptyTrash = function() {
-        if(confirm('Tem certeza que deseja ESVAZIAR a lixeira?')) {
-            trashItems = [];
-            loadLixeira();
-        }
+    window.emptyTrash = async function() {
+        alert('A opção de esvaziar lixeira foi desabilitada temporariamente por segurança.');
     }
 
     // --- Delete Column ---
@@ -1347,6 +1360,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         }
+
+        // Bind Delete Task Button
+        const btnDeleteTask = document.getElementById('btnDeleteTask');
+        if (btnDeleteTask) {
+            btnDeleteTask.onclick = async () => {
+                if(confirm('Tem certeza que deseja excluir esta tarefa? Ela será enviada para a Lixeira.')) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('task_id', taskId);
+                        const res = await fetch('api/tasks.php?action=soft_delete', { method: 'POST', body: formData });
+                        const result = await res.json();
+                        if(result.success) {
+                            alert('Tarefa movida para a Lixeira.');
+                            document.getElementById('taskDetailsModal').classList.add('hidden');
+                            document.getElementById('modalOverlay').classList.add('hidden');
+                            await loadTarefas();
+                            await loadKanbanCards();
+                        } else {
+                            alert('Erro ao excluir tarefa.');
+                        }
+                    } catch(e) {
+                        console.error(e);
+                        alert('Falha na comunicação com o servidor.');
+                    }
+                }
+            };
+        }
     }
 
     // Helper to reload UI after changes
@@ -1546,28 +1586,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } // <--- ESTA CHAVE ESTAVA FALTANDO!
 
     // 4. Excluir Tarefa
-    const btnDeleteTask = document.getElementById('btnDeleteTask');
-    if (btnDeleteTask) {
-        btnDeleteTask.onclick = async () => {
-            if(confirm('Tem certeza que deseja excluir esta tarefa? Ela será enviada para a Lixeira.')) {
-                const title = document.getElementById('taskModalTitle').innerText;
-                
-                // Em produção, isso bateria na API tasks.php?action=soft_delete
-                trashItems.push({
-                    id: Math.random(),
-                    type: 'Tarefa',
-                    title: title,
-                    deleted_at: new Date().toLocaleString()
-                });
-                
-                // Fechar modal
-                document.getElementById('taskDetailsModal').classList.add('hidden');
-                document.getElementById('modalOverlay').classList.add('hidden');
-                
-                alert('Tarefa movida para a Lixeira.');
-            }
-        };
-    }
+    // (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
 
     window.loadRelatorios = async function() {
         const container = document.getElementById('reportsContainer');
