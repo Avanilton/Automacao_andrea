@@ -26,8 +26,8 @@ if ($action === 'fetch_data') {
                     '' as apto,
                     (SELECT s.SITUACAO FROM tbsituacao s WHERE s.IDEMPRESA = c.idEmpresa LIMIT 1) as situacao
                 FROM tbcliente c
-                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa /* A relação exata de situacao pode precisar de ajuste se existir idSituacao no cliente */
-                WHERE 1=1";
+                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
+                WHERE EXISTS (SELECT 1 FROM tbboleto b WHERE b.idCliente = c.idCliente AND b.pago = 0 AND b.cancelado = 0 AND b.dataVecto < CURDATE())";
                 
         $params = [];
         

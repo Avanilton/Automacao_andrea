@@ -26,10 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Erro ao ler a sessão:', err);
     }
     
-    // Carregar usuários no início para popular os dropdowns de distribuição/atribuição
-    if (typeof loadUsers === 'function') {
-        loadUsers();
-    }
+    // Carregar usuários no início (agora chamado no final do script)
 
     // --- Sidebar Toggle ---
     const sidebar = document.getElementById('sidebar');
@@ -120,7 +117,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `,
-        relatorios: `<div class="view-section active"><h3>Relatórios (Em breve)</h3></div>`,
+        relatorios: `
+            <div class="view-section active" id="view-relatorios">
+                <div class="flex-between" style="margin-bottom: 2rem;">
+                    <h3>Relatórios Gerenciais</h3>
+                    <button class="btn-primary btn-sm" onclick="loadRelatorios()">Atualizar Dados</button>
+                </div>
+                <div id="reportsContainer">
+                    <p style="text-align:center;">Carregando relatórios...</p>
+                </div>
+            </div>
+        `,
         lixeira: `
             <div class="view-section active" id="view-lixeira">
                 <div class="flex-between" style="margin-bottom: 2rem;">
@@ -355,6 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadUsers();
         } else if (viewName === 'permissoes') {
             loadPermissions();
+        } else if (viewName === 'relatorios') {
+            if(typeof loadRelatorios === 'function') loadRelatorios();
         }
     }
 
@@ -421,7 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Users Logic ---
     window.loadUsers = async function() {
         const tbody = document.getElementById('usuariosList');
-        if (!tbody) return;
 
         try {
             const res = await fetch('api/users.php?action=list');
@@ -429,26 +437,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data && data.success && data.users.length > 0) {
                 window.currentLoadedUsers = data.users;
-                tbody.innerHTML = '';
-                data.users.forEach(u => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${u.name}</td>
-                            <td>${u.email}</td>
-                            <td><span class="label" style="background-color: ${u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)'};">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
-                            <td>
-                                <button class="btn-secondary btn-sm" onclick="editUser(${u.id})">Editar</button>
-                                <button class="btn-secondary btn-sm danger-text" style="margin-left:5px;" onclick="deleteUser(${u.id})">Excluir</button>
-                            </td>
-                        </tr>
-                    `;
-                });
+                if (tbody) {
+                    tbody.innerHTML = '';
+                    data.users.forEach(u => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${u.name}</td>
+                                <td>${u.email}</td>
+                                <td><span class="label" style="background-color: ${u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)'};">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
+                                <td>
+                                    <button class="btn-secondary btn-sm" onclick="editUser(${u.id})">Editar</button>
+                                    <button class="btn-secondary btn-sm danger-text" style="margin-left:5px;" onclick="deleteUser(${u.id})">Excluir</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>';
             }
         } catch (e) {
             console.error("Falha ao carregar usuários", e);
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Erro ao conectar com o banco de dados.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Erro ao conectar com o banco de dados.</td></tr>';
         }
     };
 
@@ -987,10 +997,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusLabel = colDef ? colDef.title : (t.status.charAt(0).toUpperCase() + t.status.slice(1));
                 bgClass = 'background: var(--primary);';
             }
+            
+            let dueWarning = '';
+            if (t.due_date && t.status !== 'done') {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const due = new Date(t.due_date + 'T00:00:00');
+                const diffTime = due - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) {
+                    dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">⚠️ Vence Amanhã</span>`;
+                } else if (diffDays < 0) {
+                    dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">⚠️ Atrasado</span>`;
+                }
+            }
 
             tbody.innerHTML += `
                 <tr>
-                    <td>${t.name}</td>
+                    <td>${t.name} ${dueWarning}</td>
                     <td>${clientText}</td>
                     <td>${t.created_at}</td>
                     <td><span class="label" style="${bgClass}">${statusLabel}</span></td>
@@ -1102,6 +1126,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="card-labels">
                             <span class="label" style="background: var(--primary)">${t.type}</span>
                         </div>
+                        
+                        ${function(){
+                            let w = '';
+                            if (t.due_date && t.status !== 'done') {
+                                const today = new Date(); today.setHours(0,0,0,0);
+                                const due = new Date(t.due_date + 'T00:00:00');
+                                const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+                                if(diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Vence Amanhã</span>`;
+                                else if(diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Atrasado</span>`;
+                            }
+                            return w ? '<div style="margin-top:5px;">' + w + '</div>' : '';
+                        }()}
+
                         <div class="card-title" style="margin-top: 5px;">${t.name}</div>
                         <div class="card-client">${t.client || 'Sem cliente'}</div>
                         <div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
@@ -1159,6 +1196,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (blocoApto) extraInfo += `<p><strong>Bloco/Apto:</strong> ${blocoApto}</p>`;
         if (t.situacao) extraInfo += `<p><strong>Situação:</strong> <span class="label" style="background:var(--bg-body); color:var(--text-main); border:1px solid var(--border)">${t.situacao}</span></p>`;
 
+        let created_at_br = t.created_at || 'N/A';
+        if (created_at_br !== 'N/A') {
+            const parts = created_at_br.split(' ');
+            if (parts.length === 2) {
+                const dateParts = parts[0].split('-');
+                if (dateParts.length === 3) {
+                    created_at_br = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]} ${parts[1]}`;
+                }
+            }
+        }
+
         document.getElementById('taskDetailsContent').innerHTML = `
             <p><strong>Imóvel:</strong> ${t.name || 'N/A'}</p>
             <p><strong>Cliente:</strong> ${t.client || 'N/A'}</p>
@@ -1171,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </select>
             </p>
             <p><strong>Atribuído a:</strong> <span id="lblAssignedUser">${userName}</span></p>
-            <p><strong>Criada em:</strong> ${t.created_at || 'N/A'}</p>
+            <p><strong>Criada em:</strong> ${created_at_br}</p>
             <div id="dynamicClientDetails" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <p style="color:var(--text-muted); font-style:italic;">Carregando detalhes do cliente...</p>
             </div>
@@ -1255,6 +1303,49 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${sharedBadges}
                 </div>
             `;
+        }
+
+        // Set inputs for editing
+        let elObs = document.getElementById('taskObservations');
+        if(elObs) elObs.value = t.observations || '';
+        
+        let elStart = document.getElementById('taskStartDate');
+        if(elStart) elStart.value = t.start_date || '';
+        
+        let elDue = document.getElementById('taskDueDate');
+        if(elDue) elDue.value = t.due_date || '';
+
+        // Bind Save Details Button
+        const btnSaveDetails = document.getElementById('btnSaveTaskDetails');
+        if (btnSaveDetails) {
+            btnSaveDetails.onclick = async () => {
+                const obs = document.getElementById('taskObservations').value;
+                const start = document.getElementById('taskStartDate').value;
+                const due = document.getElementById('taskDueDate').value;
+                try {
+                    const formData = new FormData();
+                    formData.append('task_id', taskId);
+                    formData.append('observations', obs);
+                    formData.append('start_date', start);
+                    formData.append('due_date', due);
+                    
+                    const res = await fetch('api/tasks.php?action=update_details', { method: 'POST', body: formData });
+                    const result = await res.json();
+                    if(result.success) {
+                        t.observations = obs;
+                        t.start_date = start;
+                        t.due_date = due;
+                        if(typeof logActivity === 'function') logActivity(`Detalhes da tarefa atualizados (Data/Obs)`);
+                        alert('Alterações salvas com sucesso!');
+                        await reloadUIAndModal(null);
+                    } else {
+                        alert('Erro ao salvar alterações.');
+                    }
+                } catch(e) {
+                    console.error(e);
+                    alert('Falha na comunicação ao tentar salvar.');
+                }
+            };
         }
     }
 
@@ -1478,6 +1569,85 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    window.loadRelatorios = async function() {
+        const container = document.getElementById('reportsContainer');
+        if(!container) return;
+        
+        container.innerHTML = '<p style="text-align:center;">Carregando...</p>';
+        try {
+            const res = await fetch('api/reports.php');
+            const data = await res.json();
+            
+            if(data.success) {
+                const total = data.data.total_atendimentos || 0;
+                const atendentes = data.data.ranking_atendentes || [];
+                const imoveis = data.data.ranking_imoveis || [];
+                
+                let atendentesHtml = '';
+                if(atendentes.length === 0) {
+                    atendentesHtml = '<p class="text-muted">Nenhum dado.</p>';
+                } else {
+                    atendentes.forEach((a, i) => {
+                        atendentesHtml += `
+                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <span><strong>#${i+1}</strong> ${a.atendente || 'Desconhecido'}</span>
+                                <span class="label" style="background:var(--primary)">${a.total}</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                let imoveisHtml = '';
+                if(imoveis.length === 0) {
+                    imoveisHtml = '<p class="text-muted">Nenhum dado.</p>';
+                } else {
+                    imoveis.forEach((im, i) => {
+                        imoveisHtml += `
+                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <span><strong>#${i+1}</strong> ${im.imovel || 'Sem nome'}</span>
+                                <span class="label" style="background:var(--secondary)">${im.total}</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                container.innerHTML = `
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        
+                        <div class="card" style="padding: 20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                            <h4 style="color:var(--text-muted); margin-bottom:10px;">Total de Atendimentos</h4>
+                            <h1 style="font-size: 3rem; color:var(--primary); margin:0;">${total}</h1>
+                        </div>
+                        
+                        <div class="card" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Atendentes</h4>
+                            ${atendentesHtml}
+                        </div>
+                        
+                        <div class="card" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Top 5 Imóveis</h4>
+                            ${imoveisHtml}
+                        </div>
+                        
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<p style="text-align:center; color:red;">' + (data.error || 'Erro ao carregar') + '</p>';
+            }
+        } catch(e) {
+            console.error(e);
+            container.innerHTML = '<p style="text-align:center; color:red;">Falha de comunicação.</p>';
+        }
+    };
+
     // Default view (called at the end to ensure all functions are defined)
-    loadView('tarefas');
+    
+    // Carregar usuários globalmente para os dropdowns
+    if (typeof window.loadUsers === 'function') {
+        window.loadUsers().then(() => {
+            loadView('tarefas');
+        });
+    } else {
+        loadView('tarefas');
+    }
 });

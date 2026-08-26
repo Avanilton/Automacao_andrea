@@ -161,5 +161,20 @@ if ($action === 'unshare_task') {
     jsonResponse(['success' => true]);
 }
 
+if ($action === 'update_details') {
+    $task_id = $_POST['task_id'] ?? 0;
+    $start_date = $_POST['start_date'] ?? null;
+    $due_date = $_POST['due_date'] ?? null;
+    $observations = $_POST['observations'] ?? '';
+    
+    $start_date = empty($start_date) ? null : $start_date;
+    $due_date = empty($due_date) ? null : $due_date;
+
+    $stmt = $pdo->prepare("UPDATE tasks SET start_date = ?, due_date = ?, observations = ? WHERE id = ?");
+    $stmt->execute([$start_date, $due_date, $observations, $task_id]);
+    
+    jsonResponse(['success' => true]);
+}
+
 jsonResponse(['error' => 'Ação inválida'], 404);
 ?>

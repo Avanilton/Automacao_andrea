@@ -284,7 +284,7 @@
 
                     <div class="task-section">
                         <h4>Observações</h4>
-                        <textarea class="form-control" rows="3"
+                        <textarea id="taskObservations" class="form-control" rows="3"
                             placeholder="Adicione notas ou observações sobre o cliente..."
                             style="width: 100%;"></textarea>
                     </div>
@@ -363,12 +363,13 @@
                         <h5>Datas</h5>
                         <div class="date-row">
                             <label>Início</label>
-                            <input type="date" class="form-control form-sm">
+                            <input type="date" id="taskStartDate" class="form-control form-sm">
                         </div>
                         <div class="date-row">
                             <label>Fim (Prazo)</label>
-                            <input type="date" class="form-control form-sm">
+                            <input type="date" id="taskDueDate" class="form-control form-sm">
                         </div>
+                        <button class="btn-primary" id="btnSaveTaskDetails" style="width:100%; margin-top:15px;">Salvar Alterações</button>
                     </div>
 
                     <div class="task-meta-block" id="taskShareBlock">
