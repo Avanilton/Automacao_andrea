@@ -1,148 +1,125 @@
 <?php
-// Remove limite de tempo de execução e aumenta memória para grandes volumes de dados
-set_time_limit(0);
-ini_set('memory_limit', '1024M');
-
-// Função para enviar texto ao navegador e forçar a exibição imediata
-function logMsg($msg) {
-    echo $msg . "<br>\n";
-    echo str_repeat(' ', 1024 * 64); // Preenche o buffer
-    flush();
-    ob_flush();
-}
-
-// Configura cabeçalho para HTML com streaming
-header('Content-Type: text/html; charset=utf-8');
-header('Cache-Control: no-cache');
-ob_implicit_flush(true);
-ob_end_flush();
-
 require_once 'config.php';
+header('Content-Type: text/html; charset=utf-8');
+session_start();
 
-echo "<h2>Iniciando Sincronização Inteligente (Em Lotes)...</h2>";
-logMsg("Conectando aos bancos de dados...");
+$step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
+$lastId = isset($_GET['lastId']) ? (int)$_GET['lastId'] : 0;
+$offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+
+$pdoLocal = getConnection();
+$pdoCondado = getCondadoConnection();
+
+echo "<div style='font-family: Arial; text-align: center; margin-top: 50px;'>";
+echo "<h2>🔄 Sincronização Inteligente em Andamento...</h2>";
 
 try {
-    $pdoLocal = getConnection();
-    $pdoCondado = getCondadoConnection();
-    
-    // 1. Criar as tabelas locais se não existirem
-    logMsg("Verificando estrutura local...");
-    $sqlCreate = "
-        CREATE TABLE IF NOT EXISTS cache_clientes (
-            client_code INT PRIMARY KEY,
-            property_code INT,
-            property_name VARCHAR(255),
-            client_name VARCHAR(255),
-            bloco VARCHAR(50),
-            situacao VARCHAR(100),
-            fonece VARCHAR(50), dddce VARCHAR(10),
-            foneco VARCHAR(50), dddco VARCHAR(10),
-            email VARCHAR(255), email2 VARCHAR(255), email3 VARCHAR(255)
-        );
-        
-        CREATE TABLE IF NOT EXISTS cache_boletos (
-            idBoleto INT PRIMARY KEY,
-            client_code INT,
-            total DECIMAL(10,2),
-            dataVecto DATE,
-            numero_doc VARCHAR(100)
-        );
-    ";
-    $pdoLocal->exec($sqlCreate);
+    if ($step === 1) {
+        // ETAPA 1: Boletos
+        if ($lastId === 0) {
+            // Setup inicial das tabelas
+            $pdoLocal->exec("
+                CREATE TABLE IF NOT EXISTS cache_clientes (
+                    client_code INT PRIMARY KEY, property_code INT, property_name VARCHAR(255),
+                    client_name VARCHAR(255), bloco VARCHAR(50), situacao VARCHAR(100),
+                    fonece VARCHAR(50), dddce VARCHAR(10), foneco VARCHAR(50), dddco VARCHAR(10),
+                    email VARCHAR(255), email2 VARCHAR(255), email3 VARCHAR(255)
+                );
+                CREATE TABLE IF NOT EXISTS cache_boletos (
+                    idBoleto INT PRIMARY KEY, client_code INT, total DECIMAL(10,2),
+                    dataVecto DATE, numero_doc VARCHAR(100)
+                );
+                TRUNCATE TABLE cache_boletos;
+            ");
+            echo "<p>Preparando banco de dados local...</p>";
+        }
 
-    // 2. Sincronizar Boletos em Lotes de 5000 usando Paginação de ID
-    logMsg("<b>ETAPA 1:</b> Baixando boletos vencidos (Lotes de 5000)...");
-    $pdoLocal->exec("TRUNCATE TABLE cache_boletos");
-    
-    $lastId = 0;
-    $totalBoletos = 0;
-    $insertBoleto = $pdoLocal->prepare("INSERT INTO cache_boletos (idBoleto, client_code, total, dataVecto, numero_doc) VALUES (?, ?, ?, ?, ?)");
-    
-    while (true) {
+        echo "<p>Baixando boletos... (Processando a partir do ID: $lastId)</p>";
+        
         $stmt = $pdoCondado->prepare("
             SELECT idBoleto, idCliente as client_code, total, dataVecto 
             FROM tbboleto 
             WHERE idBoleto > :lastId AND pago = 0 AND cancelado = 0 AND dataVecto < CURDATE()
-            ORDER BY idBoleto ASC
-            LIMIT 5000
+            ORDER BY idBoleto ASC LIMIT 5000
         ");
-        // Convert string to int for binding
         $stmt->bindValue(':lastId', $lastId, PDO::PARAM_INT);
         $stmt->execute();
         $boletos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (empty($boletos)) break;
-        
-        foreach ($boletos as $b) {
-            $insertBoleto->execute([
-                $b['idBoleto'], $b['client_code'], 
-                $b['total'], $b['dataVecto'], $b['idBoleto']
-            ]);
-            $lastId = $b['idBoleto'];
+
+        if (empty($boletos)) {
+            echo "<p>Todos os boletos foram importados!</p>";
+            echo "<meta http-equiv='refresh' content='1; url=?step=2&offset=0'>";
+        } else {
+            $insertBoleto = $pdoLocal->prepare("INSERT INTO cache_boletos (idBoleto, client_code, total, dataVecto, numero_doc) VALUES (?, ?, ?, ?, ?)");
+            foreach ($boletos as $b) {
+                $insertBoleto->execute([$b['idBoleto'], $b['client_code'], $b['total'], $b['dataVecto'], $b['idBoleto']]);
+                $lastId = $b['idBoleto'];
+            }
+            echo "<p>✔ " . count($boletos) . " boletos inseridos. Redirecionando para o próximo lote...</p>";
+            echo "<meta http-equiv='refresh' content='1; url=?step=1&lastId=$lastId'>";
         }
-        
-        $totalBoletos += count($boletos);
-        logMsg("... " . $totalBoletos . " boletos importados até o momento. (Último ID processado: $lastId)");
-    }
-    
-    // 3. Pegar quais clientes realmente possuem boletos para baixar só eles!
-    logMsg("<b>ETAPA 2:</b> Mapeando clientes únicos que possuem dívidas...");
-    $stmtIds = $pdoLocal->query("SELECT DISTINCT client_code FROM cache_boletos");
-    $clientIds = $stmtIds->fetchAll(PDO::FETCH_COLUMN);
-    $totalClientesAlvo = count($clientIds);
-    logMsg("Encontrados " . $totalClientesAlvo . " clientes com boletos vencidos.");
-
-    // 4. Sincronizar Clientes em Lotes de 500 IDs por vez
-    logMsg("<b>ETAPA 3:</b> Baixando dados dos clientes (Lotes de 500)...");
-    $pdoLocal->exec("TRUNCATE TABLE cache_clientes");
-    $insertCliente = $pdoLocal->prepare("
-        INSERT IGNORE INTO cache_clientes (
-            client_code, property_code, property_name, client_name, bloco, situacao, 
-            fonece, dddce, foneco, dddco, email, email2, email3
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    
-    $chunks = array_chunk($clientIds, 500);
-    $clientesImportados = 0;
-    
-    foreach ($chunks as $chunk) {
-        $in = str_repeat('?,', count($chunk) - 1) . '?';
-        $stmtClientes = $pdoCondado->prepare("
-            SELECT 
-                c.idCliente as client_code, 
-                c.idImovel as property_code,
-                COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
-                c.nomeCliente as client_name, 
-                c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
-                b_loc.BLOCO as bloco,
-                s_sit.SITUACAO as situacao
-            FROM tbcliente c
-            LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-            LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
-            LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
-            WHERE c.idCliente IN ($in)
-        ");
-        $stmtClientes->execute($chunk);
-        $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($clientes as $c) {
-            $insertCliente->execute([
-                $c['client_code'], $c['property_code'], $c['property_name'], $c['client_name'], 
-                $c['bloco'], $c['situacao'],
-                $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
-                $c['email'], $c['email2'], $c['email3']
-            ]);
-            $clientesImportados++;
+    } 
+    elseif ($step === 2) {
+        // ETAPA 2: Clientes
+        if ($offset === 0) {
+            $pdoLocal->exec("TRUNCATE TABLE cache_clientes");
         }
-        
-        logMsg("... " . $clientesImportados . " / " . $totalClientesAlvo . " clientes importados.");
+
+        echo "<p>Baixando dados dos clientes... (Processando lote: $offset)</p>";
+
+        // Pega um chunk de clientes que tem boleto
+        $stmtIds = $pdoLocal->prepare("SELECT DISTINCT client_code FROM cache_boletos ORDER BY client_code ASC LIMIT 500 OFFSET :offset");
+        $stmtIds->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmtIds->execute();
+        $clientIds = $stmtIds->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($clientIds)) {
+            echo "<p>Todos os clientes foram importados!</p>";
+            echo "<meta http-equiv='refresh' content='1; url=?step=3'>";
+        } else {
+            $in = str_repeat('?,', count($clientIds) - 1) . '?';
+            $stmtClientes = $pdoCondado->prepare("
+                SELECT c.idCliente as client_code, c.idImovel as property_code,
+                       COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
+                       c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
+                       b_loc.BLOCO as bloco, s_sit.SITUACAO as situacao
+                FROM tbcliente c
+                LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
+                LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
+                LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
+                WHERE c.idCliente IN ($in)
+            ");
+            $stmtClientes->execute($clientIds);
+            $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
+
+            $insertCliente = $pdoLocal->prepare("
+                INSERT IGNORE INTO cache_clientes (client_code, property_code, property_name, client_name, bloco, situacao, fonece, dddce, foneco, dddco, email, email2, email3) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            foreach ($clientes as $c) {
+                $insertCliente->execute([
+                    $c['client_code'], $c['property_code'], $c['property_name'], $c['client_name'], 
+                    $c['bloco'], $c['situacao'], $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
+                    $c['email'], $c['email2'], $c['email3']
+                ]);
+            }
+
+            $newOffset = $offset + 500;
+            echo "<p>✔ Mais " . count($clientes) . " clientes inseridos. Redirecionando para o próximo lote...</p>";
+            echo "<meta http-equiv='refresh' content='1; url=?step=2&offset=$newOffset'>";
+        }
+    } 
+    elseif ($step === 3) {
+        // CONCLUÍDO
+        $countBol = $pdoLocal->query("SELECT COUNT(*) FROM cache_boletos")->fetchColumn();
+        $countCli = $pdoLocal->query("SELECT COUNT(*) FROM cache_clientes")->fetchColumn();
+        echo "<h2 style='color:green;'>✅ Sincronização Concluída com Sucesso!</h2>";
+        echo "<p><strong>Total de Boletos Vencidos:</strong> $countBol</p>";
+        echo "<p><strong>Total de Clientes Inadimplentes:</strong> $countCli</p>";
+        echo "<p><a href='../index.html'>Voltar para o sistema</a></p>";
     }
-
-    logMsg("<h3>✅ Sincronização concluída com Sucesso!</h3>");
-    logMsg("<script>window.scrollTo(0, document.body.scrollHeight);</script>");
-
 } catch (Exception $e) {
-    logMsg("<h3 style='color:red;'>❌ Ocorreu um erro: " . $e->getMessage() . "</h3>");
+    echo "<h3 style='color:red;'>❌ Ocorreu um erro: " . $e->getMessage() . "</h3>";
 }
+echo "</div>";
 ?>
