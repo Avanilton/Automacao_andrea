@@ -7,7 +7,7 @@
     <title>Dashboard - Cobrança</title>
     <link rel="icon" type="image/jpeg" href="./favicon.jpg" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=7">
     <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
@@ -16,8 +16,9 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <a href="index.html" class="logo-wrapper" title="Voltar para a página inicial" style="margin-right: 10px;">
-                    <img src="img/logo.png" alt="Cobrança Task Bvgarantia" style="max-height: 40px;">
+                <a href="index.html" class="logo-wrapper" title="Voltar para a página inicial"
+                    style="margin-right: 10px;">
+                    <img src="img/logo1.png" alt="Cobrança Task Bvgarantia" style="max-height: 40px;">
                 </a>
                 <button id="toggleSidebarBtn" class="icon-btn" title="Recolher/Expandir Menu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -113,15 +114,20 @@
                 </a>
             </nav>
 
-            <div class="user-profile-small" style="margin: 1rem 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
-                <div class="avatar-circle" id="sidebarAvatar" style="position: relative; cursor: pointer; transition: opacity 0.2s;" title="Clique para trocar o avatar" onclick="document.getElementById('avatarUpload').click();" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">U</div>
+            <div class="user-profile-small"
+                style="margin: 1rem 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <div class="avatar-circle" id="sidebarAvatar"
+                    style="position: relative; cursor: pointer; transition: opacity 0.2s;"
+                    title="Clique para trocar o avatar" onclick="document.getElementById('avatarUpload').click();"
+                    onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">U</div>
                 <div class="user-info">
                     <span class="user-name" id="sidebarUserName">Usuário</span>
                     <span class="user-role" id="sidebarUserRole">Role</span>
                 </div>
             </div>
-            
-            <input type="file" id="avatarUpload" style="display: none;" accept="image/*" onchange="handleAvatarUpload(event)">
+
+            <input type="file" id="avatarUpload" style="display: none;" accept="image/*"
+                onchange="handleAvatarUpload(event)">
 
             <div class="sidebar-footer">
                 <button id="themeToggleBtnSidebar" class="icon-btn theme-toggle" title="Tema">
@@ -370,7 +376,8 @@
                             <label>Fim (Prazo)</label>
                             <input type="date" id="taskDueDate" class="form-control form-sm">
                         </div>
-                        <button class="btn-primary" id="btnSaveTaskDetails" style="width:100%; margin-top:15px;">Salvar Alterações</button>
+                        <button class="btn-primary" id="btnSaveTaskDetails" style="width:100%; margin-top:15px;">Salvar
+                            Alterações</button>
                     </div>
 
                     <div class="task-meta-block" id="taskShareBlock">
@@ -384,9 +391,9 @@
         </div>
     </div>
 
-    <script src="js/theme.js?v=6"></script>
-    <script src="js/auth.js?v=6"></script>
-    <script src="js/app.js?v=6"></script>
+    <script src="js/theme.js?v=7"></script>
+    <script src="js/auth.js?v=7"></script>
+    <script src="js/app.js?v=7"></script>
 </body>
 
 </html>

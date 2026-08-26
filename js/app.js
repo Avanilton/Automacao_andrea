@@ -1025,9 +1025,9 @@ window.loadTarefas = async function () {
             const diffTime = due - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             if (diffDays === 1) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">⚠️ Vence Amanhã</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">\u26A0\ufe0f Vence Amanhã</span>`;
             } else if (diffDays < 0) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">⚠️ Atrasado</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">\u26A0\ufe0f Atrasado</span>`;
             }
         }
 
@@ -1152,8 +1152,8 @@ window.loadKanbanCards = async function () {
                         const today = new Date(); today.setHours(0, 0, 0, 0);
                         const due = new Date(t.due_date + 'T00:00:00');
                         const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Vence Amanhã</span>`;
-                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Atrasado</span>`;
+                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Vence Amanhã</span>`;
+                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span>`;
                     }
                     return w ? '<div style="margin-top:5px;">' + w + '</div>' : '';
                 }()}
