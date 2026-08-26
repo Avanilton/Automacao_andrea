@@ -753,7 +753,7 @@ async function fetchCondadoData(searchTerm = '') {
     // Se a API retornar um aviso (ex: falha de banco usando mock do PHP)
     let warningHtml = '';
     if (result.warning) {
-        warningHtml = `<p style="color: #92400E; background: #FEF3C7; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem;">�a�️ ${result.warning}</p>`;
+        warningHtml = `<p style="color: #92400E; background: #FEF3C7; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem;">⚠️ ${result.warning}</p>`;
     }
 
     const data = result.data || [];
@@ -1025,9 +1025,9 @@ window.loadTarefas = async function () {
             const diffTime = due - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             if (diffDays === 1) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">�a�️ Vence Amanhã</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">⚠️ Vence Amanhã</span>`;
             } else if (diffDays < 0) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">�a�️ Atrasado</span>`;
+                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">⚠️ Atrasado</span>`;
             }
         }
 
@@ -1152,8 +1152,8 @@ window.loadKanbanCards = async function () {
                         const today = new Date(); today.setHours(0, 0, 0, 0);
                         const due = new Date(t.due_date + 'T00:00:00');
                         const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">�a�️ Vence Amanhã</span>`;
-                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">�a�️ Atrasado</span>`;
+                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Vence Amanhã</span>`;
+                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">⚠️ Atrasado</span>`;
                     }
                     return w ? '<div style="margin-top:5px;">' + w + '</div>' : '';
                 }()}
