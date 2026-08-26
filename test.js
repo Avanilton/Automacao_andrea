@@ -1,0 +1,10 @@
+const { JSDOM } = require('jsdom');
+const dom = new JSDOM('<!DOCTYPE html><html><body><div id="sidebarUserName"></div><div id="sidebarUserRole"></div><div id="sidebarAvatar"></div><div id="adminSubmenu"></div><div id="navUsuarios"></div><button id="toggleSidebarBtn"></button><button id="mobileMenuBtn"></button><div id="sidebar"></div><div id="viewContainer"></div><div id="currentViewTitle"></div><div id="taskModal"></div><div id="view-tarefas"></div><div id="btnShowCreateTask"></div></body></html>', { url: 'http://localhost/dashboard.html' });
+global.window = dom.window;
+global.document = dom.window.document;
+global.localStorage = { getItem: () => null, setItem: () => {} };
+global.fetch = () => Promise.resolve({ json: () => Promise.resolve({}) });
+require('./js/app.js');
+const event = new dom.window.Event('DOMContentLoaded');
+dom.window.document.dispatchEvent(event);
+console.log('App loaded successfully');

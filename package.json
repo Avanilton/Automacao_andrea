@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "jsdom": "^30.0.1",
     "mysql2": "^3.24.2"
   }
 }
