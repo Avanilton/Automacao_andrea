@@ -1517,7 +1517,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const container = document.getElementById('checklistContainer');
                 const label = document.createElement('label');
                 label.className = 'checklist-item';
-                label.innerHTML = `<input type="checkbox" onchange="updateChecklistProgress(this)"> ${text}`;
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.justifyContent = 'space-between';
+                label.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" onchange="updateChecklistProgress(this)"> 
+                        <span>${text}</span>
+                    </div>
+                    <button type="button" class="icon-btn text-danger" onclick="this.closest('.checklist-item').remove(); updateChecklistProgress(); window.logActivity('Excluiu um item do checklist: ${text}');" title="Excluir item" style="padding: 2px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                `;
                 container.appendChild(label);
                 input.value = '';
                 updateChecklistProgress();
