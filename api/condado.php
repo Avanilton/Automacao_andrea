@@ -14,7 +14,7 @@ if ($action === 'fetch_data') {
     $search = $_GET['search'] ?? '';
     
     try {
-        $pdoLocal = getDBConnection(); // LER DO CACHE LOCAL!
+        $pdoLocal = getConnection(); // LER DO CACHE LOCAL!
         
         $sql = "SELECT 
                     property_name, 
@@ -58,7 +58,7 @@ if ($action === 'fetch_client_details') {
     }
     
     try {
-        $pdoLocal = getDBConnection(); // LER DO CACHE LOCAL
+        $pdoLocal = getConnection(); // LER DO CACHE LOCAL
         
         // 1. Fetch Contact Data
         $sqlContact = "SELECT fonece, dddce, foneco, dddco, email, email2, email3 

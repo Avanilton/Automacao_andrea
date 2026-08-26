@@ -4,7 +4,7 @@ require_once 'config.php';
 header('Content-Type: application/json');
 
 try {
-    $pdoLocal = getDBConnection();
+    $pdoLocal = getConnection();
     
     // 1. Criar as tabelas locais se não existirem
     $sqlCreate = "
