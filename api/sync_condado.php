@@ -77,13 +77,20 @@ try {
         echo "<p>Baixando dados de TODOS os clientes e condomínios... (Processando a partir do ID: $lastId)</p>";
         flush();
 
+        // Busca os imóveis para memória para evitar JOIN na query principal
+        $stmtImoveis = $pdoCondado->query("SELECT idImovel, idEmpresa, nomeFantasia FROM tbimovel");
+        $imoveis = [];
+        if ($stmtImoveis) {
+            while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
+                $key = $row['idEmpresa'] . '_' . $row['idImovel'];
+                $imoveis[$key] = $row['nomeFantasia'];
+            }
+        }
+
         $stmtClientes = $pdoCondado->prepare("
-            SELECT c.idCliente as client_code, c.idImovel as property_code,
-                   COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
-                   c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
-                   NULL as bloco, NULL as situacao
+            SELECT c.idEmpresa, c.idCliente as client_code, c.idImovel as property_code,
+                   c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3
             FROM tbcliente c
-            LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
             WHERE c.idCliente > :lastId
             ORDER BY c.idCliente ASC LIMIT 1000
         ");
@@ -100,9 +107,12 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($clientes as $c) {
+                $key = $c['idEmpresa'] . '_' . $c['property_code'];
+                $propName = isset($imoveis[$key]) ? $imoveis[$key] : 'Condomínio (Não cadastrado)';
+                
                 $insertCliente->execute([
-                    $c['client_code'], $c['property_code'], $c['property_name'], $c['client_name'], 
-                    $c['bloco'], $c['situacao'], $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
+                    $c['client_code'], $c['property_code'], $propName, $c['client_name'], 
+                    NULL, NULL, $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
                     $c['email'], $c['email2'], $c['email3']
                 ]);
                 $lastId = $c['client_code'];
