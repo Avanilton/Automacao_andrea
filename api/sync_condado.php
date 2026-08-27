@@ -77,20 +77,52 @@ try {
         echo "<p>Baixando dados de TODOS os clientes e condomínios... (Processando a partir do ID: $lastId)</p>";
         flush();
 
-        // Busca os imóveis para memória para evitar JOIN na query principal
+        // Busca os imóveis para memória
         $stmtImoveis = $pdoCondado->query("SELECT * FROM tbimovel");
         $imoveis = [];
         if ($stmtImoveis) {
             while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
                 $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = isset($rowLower['idempresa']) ? $rowLower['idempresa'] : '';
-                $imovel = isset($rowLower['idimovel']) ? $rowLower['idimovel'] : '';
-                $nome = isset($rowLower['nomefantasia']) ? $rowLower['nomefantasia'] : 'Condomínio Sem Nome';
+                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
+                $imovel = trim(isset($rowLower['idimovel']) ? (string)$rowLower['idimovel'] : '');
+                $nome = trim(isset($rowLower['nomefantasia']) ? (string)$rowLower['nomefantasia'] : 'Condomínio Sem Nome');
                 
                 if ($empresa !== '') {
                     $imoveis[$empresa . '_' . $imovel] = $nome;
                 }
-                $imoveis[$imovel] = $nome; // Fallback apenas pelo idImovel
+                $imoveis[$imovel] = $nome; 
+            }
+        }
+
+        // Busca blocos para memória (simulando MIN)
+        $stmtBlocos = $pdoCondado->query("SELECT * FROM tbbloco");
+        $blocos = [];
+        if ($stmtBlocos) {
+            while ($row = $stmtBlocos->fetch(PDO::FETCH_ASSOC)) {
+                $rowLower = array_change_key_case($row, CASE_LOWER);
+                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
+                $imovel = trim(isset($rowLower['idimovel']) ? (string)$rowLower['idimovel'] : '');
+                $bloco = trim(isset($rowLower['bloco']) ? (string)$rowLower['bloco'] : '');
+                
+                $key = $empresa . '_' . $imovel;
+                if (!isset($blocos[$key]) || strcmp($bloco, $blocos[$key]) < 0) {
+                    $blocos[$key] = $bloco;
+                }
+            }
+        }
+
+        // Busca situações para memória (simulando MIN)
+        $stmtSituacoes = $pdoCondado->query("SELECT * FROM tbsituacao");
+        $situacoes = [];
+        if ($stmtSituacoes) {
+            while ($row = $stmtSituacoes->fetch(PDO::FETCH_ASSOC)) {
+                $rowLower = array_change_key_case($row, CASE_LOWER);
+                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
+                $situacao = trim(isset($rowLower['situacao']) ? (string)$rowLower['situacao'] : '');
+                
+                if (!isset($situacoes[$empresa]) || strcmp($situacao, $situacoes[$empresa]) < 0) {
+                    $situacoes[$empresa] = $situacao;
+                }
             }
         }
 
@@ -115,8 +147,8 @@ try {
             ");
             foreach ($clientes as $c) {
                 $cLower = array_change_key_case($c, CASE_LOWER);
-                $emp = isset($cLower['idempresa']) ? $cLower['idempresa'] : '';
-                $imo = isset($cLower['property_code']) ? $cLower['property_code'] : '';
+                $emp = trim(isset($cLower['idempresa']) ? (string)$cLower['idempresa'] : '');
+                $imo = trim(isset($cLower['property_code']) ? (string)$cLower['property_code'] : '');
                 
                 $keyCompleta = $emp . '_' . $imo;
                 
@@ -125,12 +157,15 @@ try {
                 } elseif (isset($imoveis[$imo]) && $imo !== '') {
                     $propName = $imoveis[$imo];
                 } else {
-                    $propName = 'Condomínio (Não cadastrado)';
+                    $propName = 'Condomínio (Não cadastrado) - ID: ' . $imo;
                 }
+                
+                $blocoName = isset($blocos[$keyCompleta]) ? $blocos[$keyCompleta] : NULL;
+                $sitName = isset($situacoes[$emp]) ? $situacoes[$emp] : NULL;
                 
                 $insertCliente->execute([
                     $cLower['client_code'] ?? 0, $cLower['property_code'] ?? 0, $propName, $cLower['client_name'] ?? '', 
-                    NULL, NULL, $cLower['fonece'] ?? '', $cLower['dddce'] ?? '', $cLower['foneco'] ?? '', $cLower['dddco'] ?? '', 
+                    $blocoName, $sitName, $cLower['fonece'] ?? '', $cLower['dddce'] ?? '', $cLower['foneco'] ?? '', $cLower['dddco'] ?? '', 
                     $cLower['email'] ?? '', $cLower['email2'] ?? '', $cLower['email3'] ?? ''
                 ]);
                 $lastId = $cLower['client_code'] ?? $lastId;
