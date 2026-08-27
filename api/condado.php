@@ -23,12 +23,13 @@ if ($action === 'fetch_data') {
                     bloco,
                     '' as apto,
                     situacao
-                FROM cache_clientes c";
+                FROM cache_clientes c
+                WHERE (c.situacao NOT LIKE '%INATIVO%' OR c.situacao IS NULL)";
                 
         $params = [];
         
         if (!empty($search)) {
-            $sql .= " WHERE (c.client_name LIKE ? OR c.property_name LIKE ? OR c.client_code LIKE ?)";
+            $sql .= " AND (c.client_name LIKE ? OR c.property_name LIKE ? OR c.client_code LIKE ?)";
             $searchTerm = '%' . $search . '%';
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
