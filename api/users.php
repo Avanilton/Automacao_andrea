@@ -95,16 +95,28 @@ if ($action === 'update_avatar') {
             jsonResponse(['success' => false, 'message' => 'Arquivo inválido. Escolha uma imagem.']);
         }
         
-        $data = file_get_contents($file['tmp_name']);
-        $base64 = 'data:' . $type . ';base64,' . base64_encode($data);
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (!$ext) {
+            $mimeTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+            $ext = $mimeTypes[$type] ?? 'jpg';
+        }
         
-        try {
-            $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
-            $stmt->execute([$base64, $id]);
+        $filename = 'avatar_' . $id . '_' . time() . '.' . $ext;
+        $filepath = '../img/' . $filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $avatarUrl = 'img/' . $filename;
             
-            jsonResponse(['success' => true, 'avatar' => $base64]);
-        } catch (PDOException $e) {
-            jsonResponse(['success' => false, 'message' => 'Erro ao salvar avatar: ' . $e->getMessage()]);
+            try {
+                $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+                $stmt->execute([$avatarUrl, $id]);
+                
+                jsonResponse(['success' => true, 'avatar' => $avatarUrl]);
+            } catch (PDOException $e) {
+                jsonResponse(['success' => false, 'message' => 'Erro ao salvar avatar: ' . $e->getMessage()]);
+            }
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Erro ao fazer upload da imagem.']);
         }
     }
     jsonResponse(['success' => false, 'message' => 'Nenhum arquivo enviado.']);
