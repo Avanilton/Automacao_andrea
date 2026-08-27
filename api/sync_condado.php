@@ -83,11 +83,11 @@ try {
         if ($stmtImoveis) {
             while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
                 $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
-                $imovel = trim(isset($rowLower['idimovel']) ? (string)$rowLower['idimovel'] : '');
+                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
+                $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
                 $nome = trim(isset($rowLower['nomefantasia']) ? (string)$rowLower['nomefantasia'] : 'Condomínio Sem Nome');
                 
-                if ($empresa !== '') {
+                if ($empresa !== 0) {
                     $imoveis[$empresa . '_' . $imovel] = $nome;
                 }
                 $imoveis[$imovel] = $nome; 
@@ -100,8 +100,8 @@ try {
         if ($stmtBlocos) {
             while ($row = $stmtBlocos->fetch(PDO::FETCH_ASSOC)) {
                 $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
-                $imovel = trim(isset($rowLower['idimovel']) ? (string)$rowLower['idimovel'] : '');
+                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
+                $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
                 $bloco = trim(isset($rowLower['bloco']) ? (string)$rowLower['bloco'] : '');
                 
                 $key = $empresa . '_' . $imovel;
@@ -117,7 +117,7 @@ try {
         if ($stmtSituacoes) {
             while ($row = $stmtSituacoes->fetch(PDO::FETCH_ASSOC)) {
                 $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = trim(isset($rowLower['idempresa']) ? (string)$rowLower['idempresa'] : '');
+                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
                 $situacao = trim(isset($rowLower['situacao']) ? (string)$rowLower['situacao'] : '');
                 
                 if (!isset($situacoes[$empresa]) || strcmp($situacao, $situacoes[$empresa]) < 0) {
@@ -147,14 +147,14 @@ try {
             ");
             foreach ($clientes as $c) {
                 $cLower = array_change_key_case($c, CASE_LOWER);
-                $emp = trim(isset($cLower['idempresa']) ? (string)$cLower['idempresa'] : '');
-                $imo = trim(isset($cLower['property_code']) ? (string)$cLower['property_code'] : '');
+                $emp = (int)(isset($cLower['idempresa']) ? $cLower['idempresa'] : 0);
+                $imo = (int)(isset($cLower['property_code']) ? $cLower['property_code'] : 0);
                 
                 $keyCompleta = $emp . '_' . $imo;
                 
                 if (isset($imoveis[$keyCompleta])) {
                     $propName = $imoveis[$keyCompleta];
-                } elseif (isset($imoveis[$imo]) && $imo !== '') {
+                } elseif (isset($imoveis[$imo]) && $imo !== 0) {
                     $propName = $imoveis[$imo];
                 } else {
                     $propName = 'Condomínio (Não cadastrado) - ID: ' . $imo;
@@ -164,7 +164,7 @@ try {
                 $sitName = isset($situacoes[$emp]) ? $situacoes[$emp] : NULL;
                 
                 $insertCliente->execute([
-                    $cLower['client_code'] ?? 0, $cLower['property_code'] ?? 0, $propName, $cLower['client_name'] ?? '', 
+                    $cLower['client_code'] ?? 0, $imo, $propName, $cLower['client_name'] ?? '', 
                     $blocoName, $sitName, $cLower['fonece'] ?? '', $cLower['dddce'] ?? '', $cLower['foneco'] ?? '', $cLower['dddco'] ?? '', 
                     $cLower['email'] ?? '', $cLower['email2'] ?? '', $cLower['email3'] ?? ''
                 ]);
