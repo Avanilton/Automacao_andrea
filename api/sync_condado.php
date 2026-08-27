@@ -78,51 +78,55 @@ try {
         flush();
 
         // Busca os imóveis para memória
-        $stmtImoveis = $pdoCondado->query("SELECT * FROM tbimovel");
+        $stmtImoveis = $pdoCondado->query("SELECT idImovel, idEmpresa, nomeFantasia FROM tbimovel");
+        if (!$stmtImoveis) {
+            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbimovel: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+        }
+        
         $imoveis = [];
-        if ($stmtImoveis) {
-            while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
-                $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
-                $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
-                $nome = trim(isset($rowLower['nomefantasia']) ? (string)$rowLower['nomefantasia'] : 'Condomínio Sem Nome');
-                
-                if ($empresa !== 0) {
-                    $imoveis[$empresa . '_' . $imovel] = $nome;
-                }
-                $imoveis[$imovel] = $nome; 
+        while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
+            $rowLower = array_change_key_case($row, CASE_LOWER);
+            $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
+            $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
+            $nome = trim(isset($rowLower['nomefantasia']) ? (string)$rowLower['nomefantasia'] : 'Condomínio Sem Nome');
+            
+            if ($empresa !== 0) {
+                $imoveis[$empresa . '_' . $imovel] = $nome;
             }
+            $imoveis[$imovel] = $nome; 
         }
 
         // Busca blocos para memória (simulando MIN)
-        $stmtBlocos = $pdoCondado->query("SELECT * FROM tbbloco");
+        $stmtBlocos = $pdoCondado->query("SELECT idEmpresa, idImovel, bloco FROM tbbloco");
+        if (!$stmtBlocos) {
+            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbbloco: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+        }
         $blocos = [];
-        if ($stmtBlocos) {
-            while ($row = $stmtBlocos->fetch(PDO::FETCH_ASSOC)) {
-                $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
-                $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
-                $bloco = trim(isset($rowLower['bloco']) ? (string)$rowLower['bloco'] : '');
-                
-                $key = $empresa . '_' . $imovel;
-                if (!isset($blocos[$key]) || strcmp($bloco, $blocos[$key]) < 0) {
-                    $blocos[$key] = $bloco;
-                }
+        while ($row = $stmtBlocos->fetch(PDO::FETCH_ASSOC)) {
+            $rowLower = array_change_key_case($row, CASE_LOWER);
+            $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
+            $imovel = (int)(isset($rowLower['idimovel']) ? $rowLower['idimovel'] : 0);
+            $bloco = trim(isset($rowLower['bloco']) ? (string)$rowLower['bloco'] : '');
+            
+            $key = $empresa . '_' . $imovel;
+            if (!isset($blocos[$key]) || strcmp($bloco, $blocos[$key]) < 0) {
+                $blocos[$key] = $bloco;
             }
         }
 
         // Busca situações para memória (simulando MIN)
-        $stmtSituacoes = $pdoCondado->query("SELECT * FROM tbsituacao");
+        $stmtSituacoes = $pdoCondado->query("SELECT idEmpresa, situacao FROM tbsituacao");
+        if (!$stmtSituacoes) {
+            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbsituacao: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+        }
         $situacoes = [];
-        if ($stmtSituacoes) {
-            while ($row = $stmtSituacoes->fetch(PDO::FETCH_ASSOC)) {
-                $rowLower = array_change_key_case($row, CASE_LOWER);
-                $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
-                $situacao = trim(isset($rowLower['situacao']) ? (string)$rowLower['situacao'] : '');
-                
-                if (!isset($situacoes[$empresa]) || strcmp($situacao, $situacoes[$empresa]) < 0) {
-                    $situacoes[$empresa] = $situacao;
-                }
+        while ($row = $stmtSituacoes->fetch(PDO::FETCH_ASSOC)) {
+            $rowLower = array_change_key_case($row, CASE_LOWER);
+            $empresa = (int)(isset($rowLower['idempresa']) ? $rowLower['idempresa'] : 0);
+            $situacao = trim(isset($rowLower['situacao']) ? (string)$rowLower['situacao'] : '');
+            
+            if (!isset($situacoes[$empresa]) || strcmp($situacao, $situacoes[$empresa]) < 0) {
+                $situacoes[$empresa] = $situacao;
             }
         }
 

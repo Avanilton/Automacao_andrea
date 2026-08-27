@@ -2,9 +2,19 @@
 require_once __DIR__ . '/api/config.php';
 $pdo = getCondadoConnection();
 
-$stmt = $pdo->query("SELECT * FROM tbimovel");
-$data = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : ['error' => $pdo->errorInfo()];
+$stmt = $pdo->query("SELECT * FROM Tbimovel");
+if (!$stmt) {
+    echo "Erro na query Tbimovel: " . print_r($pdo->errorInfo(), true) . "<br>";
+    $stmt = $pdo->query("SELECT * FROM tbimovel");
+    if (!$stmt) {
+        echo "Erro na query tbimovel: " . print_r($pdo->errorInfo(), true) . "<br>";
+    }
+}
 
-file_put_contents(__DIR__ . '/dump_imoveis.json', json_encode($data, JSON_PRETTY_PRINT));
-echo "Dump criado em dump_imoveis.json";
+if ($stmt) {
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo "<pre>";
+    print_r($data);
+    echo "</pre>";
+}
 ?>
