@@ -3,10 +3,8 @@
 require_once 'config.php';
 session_start();
 
-// Verifica se está logado
-if (!isset($_SESSION['user_id'])) {
-    jsonResponse(['error' => 'Acesso negado'], 403);
-}
+// Simulação de sessão para desenvolvimento
+$user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
 
 $action = $_GET['action'] ?? 'fetch_data';
 
