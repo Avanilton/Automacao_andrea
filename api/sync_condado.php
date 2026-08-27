@@ -81,13 +81,10 @@ try {
             SELECT c.idCliente as client_code, c.idImovel as property_code,
                    COALESCE(i.nomeFantasia, 'Condomínio (Não cadastrado)') as property_name, 
                    c.nomeCliente as client_name, c.fonece, c.dddce, c.foneco, c.dddco, c.email, c.email2, c.email3,
-                   MIN(b_loc.BLOCO) as bloco, MIN(s_sit.SITUACAO) as situacao
+                   NULL as bloco, NULL as situacao
             FROM tbcliente c
             LEFT JOIN tbimovel i ON c.idImovel = i.idImovel AND c.idEmpresa = i.idEmpresa
-            LEFT JOIN tbbloco b_loc ON b_loc.IDIMOVEL = c.idImovel AND b_loc.IDEMPRESA = c.idEmpresa
-            LEFT JOIN tbsituacao s_sit ON s_sit.IDEMPRESA = c.idEmpresa
             WHERE c.idCliente > :lastId
-            GROUP BY c.idCliente
             ORDER BY c.idCliente ASC LIMIT 1000
         ");
         $stmtClientes->bindValue(':lastId', $lastId, PDO::PARAM_INT);
