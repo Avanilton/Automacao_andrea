@@ -78,12 +78,19 @@ try {
         flush();
 
         // Busca os imóveis para memória para evitar JOIN na query principal
-        $stmtImoveis = $pdoCondado->query("SELECT idImovel, idEmpresa, nomeFantasia FROM tbimovel");
+        $stmtImoveis = $pdoCondado->query("SELECT * FROM tbimovel");
         $imoveis = [];
         if ($stmtImoveis) {
             while ($row = $stmtImoveis->fetch(PDO::FETCH_ASSOC)) {
-                $key = $row['idEmpresa'] . '_' . $row['idImovel'];
-                $imoveis[$key] = $row['nomeFantasia'];
+                $rowLower = array_change_key_case($row, CASE_LOWER);
+                $empresa = isset($rowLower['idempresa']) ? $rowLower['idempresa'] : '';
+                $imovel = isset($rowLower['idimovel']) ? $rowLower['idimovel'] : '';
+                $nome = isset($rowLower['nomefantasia']) ? $rowLower['nomefantasia'] : 'Condomínio Sem Nome';
+                
+                if ($empresa !== '') {
+                    $imoveis[$empresa . '_' . $imovel] = $nome;
+                }
+                $imoveis[$imovel] = $nome; // Fallback apenas pelo idImovel
             }
         }
 
@@ -107,15 +114,26 @@ try {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($clientes as $c) {
-                $key = $c['idEmpresa'] . '_' . $c['property_code'];
-                $propName = isset($imoveis[$key]) ? $imoveis[$key] : 'Condomínio (Não cadastrado)';
+                $cLower = array_change_key_case($c, CASE_LOWER);
+                $emp = isset($cLower['idempresa']) ? $cLower['idempresa'] : '';
+                $imo = isset($cLower['property_code']) ? $cLower['property_code'] : '';
+                
+                $keyCompleta = $emp . '_' . $imo;
+                
+                if (isset($imoveis[$keyCompleta])) {
+                    $propName = $imoveis[$keyCompleta];
+                } elseif (isset($imoveis[$imo]) && $imo !== '') {
+                    $propName = $imoveis[$imo];
+                } else {
+                    $propName = 'Condomínio (Não cadastrado)';
+                }
                 
                 $insertCliente->execute([
-                    $c['client_code'], $c['property_code'], $propName, $c['client_name'], 
-                    NULL, NULL, $c['fonece'], $c['dddce'], $c['foneco'], $c['dddco'], 
-                    $c['email'], $c['email2'], $c['email3']
+                    $cLower['client_code'] ?? 0, $cLower['property_code'] ?? 0, $propName, $cLower['client_name'] ?? '', 
+                    NULL, NULL, $cLower['fonece'] ?? '', $cLower['dddce'] ?? '', $cLower['foneco'] ?? '', $cLower['dddco'] ?? '', 
+                    $cLower['email'] ?? '', $cLower['email2'] ?? '', $cLower['email3'] ?? ''
                 ]);
-                $lastId = $c['client_code'];
+                $lastId = $cLower['client_code'] ?? $lastId;
             }
             
             echo "<p>✔ Mais " . count($clientes) . " clientes inseridos. Redirecionando para o próximo lote...</p>";

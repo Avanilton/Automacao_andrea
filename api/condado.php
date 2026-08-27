@@ -15,15 +15,16 @@ if ($action === 'fetch_data') {
         $pdoLocal = getConnection(); // LER DO CACHE LOCAL!
         
         $sql = "SELECT 
-                    property_name, 
-                    property_code,
-                    client_code, 
-                    client_name, 
-                    0 as value,
-                    bloco,
+                    c.property_name, 
+                    c.property_code,
+                    c.client_code, 
+                    c.client_name, 
+                    SUM(b.total) as value,
+                    c.bloco,
                     '' as apto,
-                    situacao
+                    c.situacao
                 FROM cache_clientes c
+                INNER JOIN cache_boletos b ON c.client_code = b.client_code
                 WHERE (c.situacao NOT LIKE '%INATIVO%' OR c.situacao IS NULL)";
                 
         $params = [];
@@ -34,6 +35,7 @@ if ($action === 'fetch_data') {
             $params = [$searchTerm, $searchTerm, $searchTerm];
         }
         
+        $sql .= " GROUP BY c.client_code, c.property_name, c.property_code, c.client_name, c.bloco, c.situacao";
         $sql .= " LIMIT 50";
         
         $stmt = $pdoLocal->prepare($sql);
