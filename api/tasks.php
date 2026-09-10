@@ -117,7 +117,7 @@ if ($action === 'import_bulk') {
                 $task['client_name'] ?? '',
                 $task['value'] ?? 0,
                 !empty($task['due_date']) ? $task['due_date'] : null,
-                $task['assigned_to'] ?? 1,
+                $task['assigned_to'] ?? $user_id,
                 $user_id,
                 $task['bloco'] ?? null,
                 $task['apto'] ?? null,

@@ -459,7 +459,7 @@ function processExcelFile(file) {
                 const usuarioResp = row[7] || ''; // Ex: "Adelaide"
 
                 // Mapear usuario via email
-                let assignedUserId = 1; // Fallback para Admin
+                let assignedUserId = user ? user.id : null; // Fallback para o usuário logado
                 if (usuarioResp) {
                     const normalizedName = usuarioResp.trim().toLowerCase().replace(/\s+/g, '');
                     const predictedEmail = `${normalizedName}@cobrancatask.com`;
