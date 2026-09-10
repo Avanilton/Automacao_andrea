@@ -88,7 +88,11 @@ const views = {
             <div class="view-section active" id="view-tarefas">
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
-                    <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="file" id="importTasksInput" accept=".xls,.xlsx" style="display:none">
+                        <button class="btn-secondary" id="btnImportTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}">Importar Planilha</button>
+                        <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
+                    </div>
                 </div>
                 
                 <div style="background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
@@ -378,7 +382,145 @@ document.addEventListener('click', (e) => {
     if (e.target.closest('#btnShowCreateTask')) {
         openCreateTaskModal();
     }
+    if (e.target.closest('#btnImportTasks')) {
+        const fileInput = document.getElementById('importTasksInput');
+        if (fileInput) fileInput.click();
+    }
 });
+
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'importTasksInput') {
+        handleTasksImport(e);
+    }
+});
+
+function handleTasksImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Se os usuários não estiverem carregados, vamos tentar carregar para o cruzamento
+    if (!window.currentLoadedUsers || window.currentLoadedUsers.length === 0) {
+        if (typeof loadUsers === 'function') {
+            loadUsers().then(() => processExcelFile(file));
+            return;
+        }
+    }
+    processExcelFile(file);
+    e.target.value = ''; // reseta
+}
+
+function processExcelFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const data = evt.target.result;
+        try {
+            const workbook = XLSX.read(data, { type: 'binary' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // O header:1 gera um array de arrays para podermos varrer livremente
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            if (rows.length < 2) {
+                alert("A planilha parece estar vazia ou sem dados.");
+                return;
+            }
+
+            const parsedTasks = [];
+
+            // Pula a linha do cabeçalho (i = 1)
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0 || !row[0]) continue; // linha vazia
+
+                const docMorador = row[0] || '';
+                const nomeMorador = row[1] || '';
+                const blocoApto = row[2] || '';
+                
+                // Formatar data (se for numero serial do excel ou string)
+                let dataVctoStr = '';
+                if (typeof row[3] === 'number') {
+                    // Converter serial para date JS (Ajuste basico excel -> js)
+                    const dateInfo = new Date(Math.round((row[3] - 25569) * 86400 * 1000));
+                    dataVctoStr = dateInfo.toISOString().split('T')[0];
+                } else if (typeof row[3] === 'string') {
+                    // Tenta converter DD/MM/YYYY para YYYY-MM-DD
+                    const parts = row[3].split('/');
+                    if(parts.length === 3) {
+                        dataVctoStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    } else {
+                        dataVctoStr = row[3];
+                    }
+                }
+
+                const encargos = row[4] || '';
+                const totalDivida = row[5] || 0;
+                const nomeCondominio = row[6] || '';
+                const usuarioResp = row[7] || ''; // Ex: "Adelaide"
+
+                // Mapear usuario via email
+                let assignedUserId = 1; // Fallback para Admin
+                if (usuarioResp) {
+                    const normalizedName = usuarioResp.trim().toLowerCase().replace(/\s+/g, '');
+                    const predictedEmail = `${normalizedName}@cobrancatask.com`;
+                    
+                    const foundUser = (window.currentLoadedUsers || []).find(u => u.email === predictedEmail);
+                    if (foundUser) {
+                        assignedUserId = foundUser.id;
+                    }
+                }
+
+                parsedTasks.push({
+                    client_code: docMorador,
+                    client_name: nomeMorador,
+                    bloco: blocoApto,
+                    due_date: dataVctoStr,
+                    observations: encargos ? `Encargos: R$ ${encargos}` : '',
+                    value: parseFloat(totalDivida) || 0,
+                    property_name: nomeCondominio,
+                    assigned_to: assignedUserId
+                });
+            }
+
+            if (parsedTasks.length === 0) {
+                alert("Nenhuma tarefa válida encontrada na planilha.");
+                return;
+            }
+
+            // Enviar para o backend
+            if (confirm(`Deseja importar ${parsedTasks.length} tarefas da planilha?`)) {
+                sendImportRequest(parsedTasks);
+            }
+
+        } catch (err) {
+            console.error("Erro ao ler excel: ", err);
+            alert("Erro ao processar o arquivo. Verifique o console.");
+        }
+    };
+    reader.readAsBinaryString(file);
+}
+
+function sendImportRequest(tasksList) {
+    fetch('api/tasks.php?action=import_bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: tasksList })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Tarefas importadas com sucesso!");
+            if (typeof loadTarefas === 'function') loadTarefas();
+            if (typeof loadKanbanCards === 'function') loadKanbanCards();
+        } else {
+            alert("Erro ao importar: " + (data.error || "Desconhecido"));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Erro na requisição.");
+    });
+}
 
 // --- Permissoes Logic ---
 window.loadPermissions = function () {

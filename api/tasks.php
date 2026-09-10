@@ -99,6 +99,40 @@ if ($action === 'create') {
     }
 }
 
+if ($action === 'import_bulk') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    
+    if(!isset($data['tasks']) || !is_array($data['tasks'])) {
+        jsonResponse(['error' => 'Dados inválidos'], 400);
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, observations, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        
+        foreach($data['tasks'] as $task) {
+            $stmt->execute([
+                $task['property_name'] ?? '',
+                $task['client_code'] ?? '',
+                $task['client_name'] ?? '',
+                $task['value'] ?? 0,
+                !empty($task['due_date']) ? $task['due_date'] : null,
+                $task['assigned_to'] ?? 1,
+                $user_id,
+                $task['bloco'] ?? null,
+                $task['apto'] ?? null,
+                $task['observations'] ?? null,
+                $task['situacao'] ?? null
+            ]);
+        }
+        $pdo->commit();
+        jsonResponse(['success' => true]);
+    } catch(Exception $e) {
+        $pdo->rollBack();
+        jsonResponse(['error' => 'Erro ao importar tarefas: ' . $e->getMessage()], 500);
+    }
+}
+
 if ($action === 'update_status') {
     $task_id = $_POST['task_id'] ?? 0;
     $status = $_POST['status'] ?? '';
