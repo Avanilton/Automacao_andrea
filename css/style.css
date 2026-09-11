@@ -140,7 +140,67 @@ a {
 
 .login-form .input-group {
     margin-bottom: 1.5rem;
-    text-align: left;
+}
+
+/* Search Input Modern */
+.search-container {
+    position: relative;
+    width: 250px;
+    background: var(--bg-surface);
+    border-radius: 2rem;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0, 0, 0.43, 1.49);
+}
+.search-container:focus-within {
+    width: 320px;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 93, 35, 0.2);
+}
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-muted);
+    width: 1.2rem;
+    height: 1.2rem;
+    pointer-events: none;
+    z-index: 2;
+}
+.search-input {
+    width: 100%;
+    height: 2.8rem;
+    font-family: inherit;
+    border: 0;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    background: transparent;
+    padding: 0 1rem 0 2.8rem;
+    border-radius: 2rem;
+    outline: 0;
+    appearance: none;
+}
+.search-input::-webkit-search-cancel-button {
+    appearance: none;
+}
+[data-theme="dark"] .search-container {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+/* Fix table actions layout */
+.table-actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.table-actions .btn-secondary {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.data-table td {
+    vertical-align: middle;
 }
 
 .input-group label {

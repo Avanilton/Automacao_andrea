@@ -89,13 +89,13 @@ const views = {
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <div class="search-input-wrapper">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input type="text" id="searchTarefas" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
+                        <div class="search-container">
+                            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="search" id="searchTarefas" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
                         </div>
                         <input type="file" id="importTasksInput" accept=".xls,.xlsx" style="display:none">
                         <button class="btn-secondary" id="btnImportTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}">Importar Planilha</button>
-                        <button class="btn-secondary danger-text" id="btnTruncateTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}" onclick="if(confirm('ATENÇÃO: Isto apagará TODAS as tarefas e dados do Kanban. Continuar?')) { fetch('api/tasks.php?action=truncate_tasks').then(()=>location.reload()); }">Zerar Dados</button>
+                        <button class="btn-secondary danger-text" id="btnTruncateTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}" onclick="if(typeof truncateAllData === 'function') truncateAllData()">Zerar Dados</button>
                         <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
                     </div>
                 </div>
@@ -126,9 +126,9 @@ const views = {
                 <div class="flex-between" style="margin-bottom: 1rem;">
                     <h3>Kanban</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <div class="search-input-wrapper">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input type="text" id="searchKanban" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterKanban === 'function') filterKanban()">
+                        <div class="search-container">
+                            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="search" id="searchKanban" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterKanban === 'function') filterKanban()">
                         </div>
                         <button class="btn-primary btn-sm" onclick="promptAddColumn()">+ Adicionar Coluna</button>
                     </div>
@@ -1253,6 +1253,26 @@ window.filterKanban = function() {
             card.style.display = 'none';
         }
     });
+}
+
+window.truncateAllData = async function() {
+    if (!confirm('ATENÇÃO: Isto apagará TODAS as tarefas e dados do Kanban. Você tem certeza que deseja continuar?')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('api/tasks.php?action=truncate_tasks', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('Dados apagados com sucesso.');
+            location.reload();
+        } else {
+            alert('Erro ao apagar dados.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao apagar dados. Verifique a conexão.');
+    }
 }
 
 window.deleteServerTask = async function (id) {
