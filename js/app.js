@@ -88,7 +88,8 @@ const views = {
             <div class="view-section active" id="view-tarefas">
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="searchTarefas" class="form-control" placeholder="Buscar cliente/imóvel..." style="width: 200px;" onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
                         <input type="file" id="importTasksInput" accept=".xls,.xlsx" style="display:none">
                         <button class="btn-secondary" id="btnImportTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}">Importar Planilha</button>
                         <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
@@ -120,7 +121,10 @@ const views = {
             <div class="view-section active" id="view-kanban">
                 <div class="flex-between" style="margin-bottom: 1rem;">
                     <h3>Kanban</h3>
-                    <button class="btn-primary btn-sm" onclick="promptAddColumn()">+ Adicionar Coluna</button>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="searchKanban" class="form-control" placeholder="Buscar cliente/imóvel..." style="width: 200px;" onkeyup="if(typeof filterKanban === 'function') filterKanban()">
+                        <button class="btn-primary btn-sm" onclick="promptAddColumn()">+ Adicionar Coluna</button>
+                    </div>
                 </div>
                 <div class="kanban-board" id="kanbanBoard">
                     <!-- Columns will be injected dynamically here by loadKanbanCards() / loadColumns() -->
@@ -359,21 +363,37 @@ const views = {
 };
 
 function loadView(viewName) {
-    viewContainer.innerHTML = views[viewName] || '<div>Não encontrado</div>';
+    let targetView = document.getElementById('rendered-view-' + viewName);
+    if (!targetView) {
+        targetView = document.createElement('div');
+        targetView.id = 'rendered-view-' + viewName;
+        targetView.innerHTML = views[viewName] || '<div>Não encontrado</div>';
+        viewContainer.appendChild(targetView);
+        targetView.isFirstLoad = true;
+    } else {
+        targetView.isFirstLoad = false;
+    }
+    
+    Array.from(viewContainer.children).forEach(child => {
+        if (child.id && child.id.startsWith('rendered-view-')) {
+            child.style.display = 'none';
+        }
+    });
+    targetView.style.display = 'block';
 
     // Setup view specific events
     if (viewName === 'tarefas') {
-        loadTarefas();
+        if (targetView.isFirstLoad) loadTarefas();
     } else if (viewName === 'kanban') {
-        loadKanbanCards();
+        if (targetView.isFirstLoad) loadKanbanCards();
     } else if (viewName === 'lixeira') {
-        loadLixeira();
+        if (targetView.isFirstLoad) loadLixeira();
     } else if (viewName === 'usuarios') {
-        loadUsers();
+        if (targetView.isFirstLoad) loadUsers();
     } else if (viewName === 'permissoes') {
-        loadPermissions();
+        if (targetView.isFirstLoad) loadPermissions();
     } else if (viewName === 'relatorios') {
-        if (typeof loadRelatorios === 'function') loadRelatorios();
+        if (targetView.isFirstLoad && typeof loadRelatorios === 'function') loadRelatorios();
     }
 }
 
@@ -458,24 +478,39 @@ function processExcelFile(file) {
                 const nomeCondominio = row[6] || '';
                 const usuarioResp = row[7] || ''; // Ex: "Adelaide"
 
-                // Mapear usuario via email
+                // Mapear usuario pelo nome (ignorando maiusculas/minusculas)
                 let assignedUserId = user ? user.id : null; // Fallback para o usuário logado
                 if (usuarioResp) {
-                    const normalizedName = usuarioResp.trim().toLowerCase().replace(/\s+/g, '');
-                    const predictedEmail = `${normalizedName}@cobrancatask.com`;
+                    const searchName = usuarioResp.trim().toLowerCase();
+                    const cleanS = searchName.replace(/[^a-z]/g, '');
+                    const foundUser = (window.currentLoadedUsers || []).find(u => {
+                        const uName = u.name.toLowerCase();
+                        const cleanU = uName.replace(/[^a-z]/g, '');
+                        if (uName.includes(searchName) || searchName.includes(uName)) return true;
+                        if (cleanU.includes(cleanS) || cleanS.includes(cleanU)) return true;
+                        if (cleanU.replace('i', '') === cleanS.replace('i', '')) return true;
+                        if (cleanU.replace('adival', 'adval') === cleanS.replace('adival', 'adval')) return true;
+                        return false;
+                    });
                     
-                    const foundUser = (window.currentLoadedUsers || []).find(u => u.email === predictedEmail);
                     if (foundUser) {
                         assignedUserId = foundUser.id;
                     }
+                }
+
+                let obsText = encargos ? `Encargos: R$ ${encargos}` : '';
+                if (dataVctoStr) {
+                    const parts = dataVctoStr.split('-');
+                    const dispDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dataVctoStr;
+                    obsText += (obsText ? '\n' : '') + `Data Vencimento do Boleto: ${dispDate}`;
                 }
 
                 parsedTasks.push({
                     client_code: docMorador,
                     client_name: nomeMorador,
                     bloco: blocoApto,
-                    due_date: dataVctoStr,
-                    observations: encargos ? `Encargos: R$ ${encargos}` : '',
+                    due_date: '', // Nao colocar no prazo do card
+                    observations: obsText,
                     value: parseFloat(totalDivida) || 0,
                     property_name: nomeCondominio,
                     assigned_to: assignedUserId
@@ -1185,6 +1220,32 @@ window.loadTarefas = async function () {
     });
 }
 
+window.filterTarefas = function() {
+    const term = document.getElementById('searchTarefas') ? document.getElementById('searchTarefas').value.toLowerCase() : '';
+    const rows = document.querySelectorAll('#tarefasList tr');
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        if (text.includes(term)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+window.filterKanban = function() {
+    const term = document.getElementById('searchKanban') ? document.getElementById('searchKanban').value.toLowerCase() : '';
+    const cards = document.querySelectorAll('.kanban-card');
+    cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(term)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
 window.deleteServerTask = async function (id) {
     if (confirm("Tem certeza que deseja mover esta tarefa para a Lixeira?")) {
         try {
@@ -1356,6 +1417,21 @@ window.openTaskDetails = function (taskId) {
     let extraInfo = '';
     if (blocoApto) extraInfo += `<p><strong>Bloco/Apto:</strong> ${blocoApto}</p>`;
     if (t.situacao) extraInfo += `<p><strong>Situação:</strong> <span class="label" style="background:var(--bg-body); color:var(--text-main); border:1px solid var(--border)">${t.situacao}</span></p>`;
+    
+    // Taxas da planilha
+    if (t.value && parseFloat(t.value) > 0) {
+        extraInfo += `<div style="margin-top:10px; margin-bottom:10px; padding: 10px; border: 1px solid var(--danger); border-radius: 4px; background: #FEF2F2;">
+            <p style="margin:0; color: var(--danger);"><strong>Taxas (Boletos Devidos):</strong> R$ ${parseFloat(t.value).toFixed(2)}</p>`;
+        
+        // Extrai a data de vencimento preenchida nas observações durante a importação
+        if (t.observations && t.observations.includes('Data Vencimento do Boleto:')) {
+            const match = t.observations.match(/Data Vencimento do Boleto:\s*([^\n]+)/);
+            if (match && match[1]) {
+                extraInfo += `<p style="margin: 5px 0 0 0; font-size: 0.9em; color: var(--danger);"><strong>Vencimento:</strong> ${match[1]}</p>`;
+            }
+        }
+        extraInfo += `</div>`;
+    }
 
     let created_at_br = t.created_at || 'N/A';
     if (created_at_br !== 'N/A') {
