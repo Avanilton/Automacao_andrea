@@ -89,9 +89,13 @@ const views = {
                 <div class="flex-between" style="margin-bottom: 2rem;">
                     <h3>Minhas Tarefas</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="searchTarefas" class="form-control" placeholder="Buscar cliente/imóvel..." style="width: 200px;" onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
+                        <div class="search-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="text" id="searchTarefas" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
+                        </div>
                         <input type="file" id="importTasksInput" accept=".xls,.xlsx" style="display:none">
                         <button class="btn-secondary" id="btnImportTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}">Importar Planilha</button>
+                        <button class="btn-secondary danger-text" id="btnTruncateTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}" onclick="if(confirm('ATENÇÃO: Isto apagará TODAS as tarefas e dados do Kanban. Continuar?')) { fetch('api/tasks.php?action=truncate_tasks').then(()=>location.reload()); }">Zerar Dados</button>
                         <button class="btn-primary" id="btnShowCreateTask" style="display: ${user && (user.role === 'admin' || safeGetPermissions().create_task) ? 'block' : 'none'}">Criar tarefas</button>
                     </div>
                 </div>
@@ -122,7 +126,10 @@ const views = {
                 <div class="flex-between" style="margin-bottom: 1rem;">
                     <h3>Kanban</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="searchKanban" class="form-control" placeholder="Buscar cliente/imóvel..." style="width: 200px;" onkeyup="if(typeof filterKanban === 'function') filterKanban()">
+                        <div class="search-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="text" id="searchKanban" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterKanban === 'function') filterKanban()">
+                        </div>
                         <button class="btn-primary btn-sm" onclick="promptAddColumn()">+ Adicionar Coluna</button>
                     </div>
                 </div>
@@ -1170,11 +1177,13 @@ window.loadTarefas = async function () {
 
         let clientText = t.client ? `${t.client} <br><small style="color:var(--text-muted)">Atendente: ${userName}</small>` : userName;
 
-        let actionButtons = `<button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>`;
+        let actionButtons = `<div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>`;
 
         if (user && user.role === 'admin') {
-            actionButtons += ` <button class="btn-secondary danger-text" style="margin-left: 0.5rem;" onclick="deleteServerTask('${t.id}')">Excluir</button>`;
+            actionButtons += `<button class="btn-secondary danger-text" onclick="deleteServerTask('${t.id}')">Excluir</button>`;
         }
+        
+        actionButtons += `</div>`;
 
         let colDef = typeof localColumns !== 'undefined' ? localColumns.find(c => c.status_key === t.status) : null;
         let statusLabel = 'A Fazer';

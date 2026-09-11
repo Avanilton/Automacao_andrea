@@ -63,6 +63,12 @@ if ($action === 'force_delete') {
     jsonResponse(['success' => true]);
 }
 
+if ($action === 'truncate_tasks') {
+    $pdo->query("TRUNCATE TABLE tasks");
+    $pdo->query("TRUNCATE TABLE task_shares");
+    jsonResponse(['success' => true]);
+}
+
 if ($action === 'create') {
     // Distribuir tarefas
     $data = json_decode(file_get_contents("php://input"), true);
