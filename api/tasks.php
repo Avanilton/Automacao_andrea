@@ -64,9 +64,13 @@ if ($action === 'force_delete') {
 }
 
 if ($action === 'truncate_tasks') {
-    $pdo->query("TRUNCATE TABLE tasks");
-    $pdo->query("TRUNCATE TABLE task_shares");
-    jsonResponse(['success' => true]);
+    try {
+        $pdo->query("DELETE FROM task_shares");
+        $pdo->query("DELETE FROM tasks");
+        jsonResponse(['success' => true]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()]);
+    }
 }
 
 if ($action === 'create') {

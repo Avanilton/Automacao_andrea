@@ -1267,7 +1267,7 @@ window.truncateAllData = async function() {
             alert('Dados apagados com sucesso.');
             location.reload();
         } else {
-            alert('Erro ao apagar dados.');
+            alert('Erro ao apagar dados: ' + (data.error || 'Desconhecido'));
         }
     } catch (e) {
         console.error(e);
