@@ -1187,20 +1187,21 @@ window.loadTarefas = async function () {
 
         let colDef = typeof localColumns !== 'undefined' ? localColumns.find(c => c.status_key === t.status) : null;
         let statusLabel = 'A Fazer';
-        let bgClass = 'background: #64748B;';
+        let baseStyle = 'white-space: nowrap; font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 4px; color: white; display: inline-block; text-align: center;';
+        let bgClass = baseStyle + ' background: #64748B;';
 
         if (t.status === 'todo') {
             statusLabel = colDef ? colDef.title : 'A Fazer';
-            bgClass = 'background: #64748B;';
+            bgClass = baseStyle + ' background: #64748B;';
         } else if (t.status === 'doing' || t.status === 'in_progress') {
             statusLabel = colDef ? colDef.title : 'Atendendo';
-            bgClass = 'background: #3B82F6;';
+            bgClass = baseStyle + ' background: #3B82F6;';
         } else if (t.status === 'done') {
             statusLabel = colDef ? colDef.title : 'Finalizado';
-            bgClass = 'background: #10B981;';
+            bgClass = baseStyle + ' background: #10B981;';
         } else if (t.status) {
             statusLabel = colDef ? colDef.title : (t.status.charAt(0).toUpperCase() + t.status.slice(1));
-            bgClass = 'background: var(--primary);';
+            bgClass = baseStyle + ' background: var(--primary);';
         }
 
         let dueWarning = '';
