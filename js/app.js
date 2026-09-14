@@ -1192,7 +1192,8 @@ window.loadTarefas = async function () {
                 if (data && data.error) {
                     alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
                 }
-                window.currentLoadedTasks = [];
+window.currentLoadedTasks = [];
+window.currentOpenTaskId = null;
             }
         } catch (jsonErr) {
             console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
@@ -1430,6 +1431,7 @@ window.promptAddColumn = function () {
 }
 
 window.openTaskDetails = function (taskId) {
+    window.currentOpenTaskId = taskId;
     let savedTasks = window.currentLoadedTasks || [];
     let t = savedTasks.find(task => task.id == taskId);
     if (!t) return;
@@ -1440,6 +1442,13 @@ window.openTaskDetails = function (taskId) {
 
     modalOverlay.classList.remove('hidden');
     document.getElementById('taskDetailsModal').classList.remove('hidden');
+
+    const dynDetails = document.getElementById('dynamicClientDetails');
+    if (dynDetails) dynDetails.innerHTML = '';
+    const actLog = document.getElementById('activityLog');
+    if (actLog) actLog.innerHTML = '';
+    const taskUpdates = document.getElementById('taskUpdatesList');
+    if (taskUpdates) taskUpdates.innerHTML = '';
 
     let statusOptionsHtml = '';
     if (typeof localColumns !== 'undefined') {
@@ -1864,7 +1873,7 @@ if (btnSaveUpdate) {
         // Try to hit API if real ID is available (Mocked ID 1 here for demo)
         try {
             const formData = new FormData();
-            formData.append('task_id', 1);
+            formData.append('task_id', window.currentOpenTaskId);
             formData.append('content', content);
 
             await fetch('api/tasks.php?action=add_update', {
