@@ -199,17 +199,18 @@ const views = {
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Trocar Senha</h4>
                     <div class="input-group">
                         <label>Senha Atual</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="currentPassword" class="form-control">
                     </div>
                     <div class="input-group">
                         <label>Nova Senha</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="newPassword" class="form-control">
                     </div>
                     <div class="input-group">
                         <label>Confirmar Nova Senha</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="confirmPassword" class="form-control">
                     </div>
-                    <button class="btn-primary" style="margin-top: 1rem;" onclick="alert('Senha atualizada!')">Atualizar Senha</button>
+                    <div id="passwordMessage" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    <button class="btn-primary" style="margin-top: 1rem;" onclick="changePassword()">Atualizar Senha</button>
                 </div>
             </div>
             
@@ -709,6 +710,57 @@ window.editUser = function (id) {
     document.querySelector('#createUserModal h3').innerText = "Editar Usuário";
     document.getElementById('modalOverlay').classList.remove('hidden');
     document.getElementById('createUserModal').classList.remove('hidden');
+};
+
+window.changePassword = async function () {
+    const msgEl = document.getElementById('passwordMessage');
+    const current = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (!current || !newPass || !confirm) {
+        msgEl.textContent = 'Preencha todos os campos.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (newPass !== confirm) {
+        msgEl.textContent = 'As senhas não coincidem.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (newPass.length < 6) {
+        msgEl.textContent = 'A nova senha deve ter no mínimo 6 caracteres.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('current_password', current);
+        formData.append('new_password', newPass);
+
+        const res = await fetch('api/auth.php?action=change_password', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            msgEl.textContent = data.message || 'Senha atualizada!';
+            msgEl.style.color = '#10B981';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            msgEl.textContent = data.error || 'Erro ao atualizar senha.';
+            msgEl.style.color = '#ef4444';
+        }
+    } catch (e) {
+        msgEl.textContent = 'Erro de conexão com o servidor.';
+        msgEl.style.color = '#ef4444';
+    }
 };
 
 window.deleteUser = async function (id) {
