@@ -9,16 +9,16 @@ $role = $_SESSION['role'] ?? 'user';
 
 try {
     $pdo = getConnection();
-    $where = "WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00'";
+    $where = "WHERE t.deleted_at IS NULL OR t.deleted_at = '0000-00-00 00:00:00'";
     $params = [];
     
     if ($role !== 'admin') {
-        $where .= " AND (assigned_to = ? OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?))";
+        $where .= " AND (t.assigned_to = ? OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?))";
         $params = [$user_id, $user_id];
     }
     
     // 1. Total Atendimentos
-    $stmtTotal = $pdo->prepare("SELECT COUNT(*) as total FROM tasks $where");
+    $stmtTotal = $pdo->prepare("SELECT COUNT(*) as total FROM tasks t $where");
     $stmtTotal->execute($params);
     $totalAtendimentos = $stmtTotal->fetch()['total'];
     
@@ -37,10 +37,10 @@ try {
     
     // 3. Ranking Imóveis (Top 5)
     $stmtRankingImoveis = $pdo->prepare("
-        SELECT property_name as imovel, COUNT(id) as total 
-        FROM tasks 
+        SELECT t.property_name as imovel, COUNT(t.id) as total 
+        FROM tasks t 
         $where
-        GROUP BY property_name
+        GROUP BY t.property_name
         ORDER BY total DESC
         LIMIT 5
     ");
