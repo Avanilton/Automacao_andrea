@@ -7,9 +7,9 @@ session_start();
 $user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
 
 $action = $_GET['action'] ?? '';
-$pdo = getConnection();
 
 if ($action === 'list') {
+    $pdo = getConnection();
     // Listar tarefas não excluídas (suporta MySQL Strict mode ou zero-dates de imports cPanel)
     $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00' ORDER BY created_at DESC");
     $tasks = $stmt->fetchAll();
@@ -37,12 +37,14 @@ if ($action === 'list') {
 }
 
 if ($action === 'list_trash') {
+    $pdo = getConnection();
     $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
     $tasks = $stmt->fetchAll();
     jsonResponse(['success' => true, 'tasks' => $tasks]);
 }
 
 if ($action === 'soft_delete') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $stmt = $pdo->prepare("UPDATE tasks SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?");
     $stmt->execute([$task_id]);
@@ -50,6 +52,7 @@ if ($action === 'soft_delete') {
 }
 
 if ($action === 'restore') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $stmt = $pdo->prepare("UPDATE tasks SET deleted_at = NULL WHERE id = ?");
     $stmt->execute([$task_id]);
@@ -57,6 +60,7 @@ if ($action === 'restore') {
 }
 
 if ($action === 'force_delete') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = ?");
     $stmt->execute([$task_id]);
@@ -64,6 +68,7 @@ if ($action === 'force_delete') {
 }
 
 if ($action === 'truncate_tasks') {
+    $pdo = getConnection();
     try {
         $pdo->query("DELETE FROM task_shares");
         $pdo->query("DELETE FROM tasks");
@@ -83,6 +88,7 @@ if ($action === 'create') {
     
     $assigned_to = $data['assigned_to'];
     
+    $pdo = getConnection();
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -116,6 +122,7 @@ if ($action === 'import_bulk') {
         jsonResponse(['error' => 'Dados inválidos'], 400);
     }
     
+    $pdo = getConnection();
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, observations, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -144,6 +151,7 @@ if ($action === 'import_bulk') {
 }
 
 if ($action === 'update_status') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $status = $_POST['status'] ?? '';
     
@@ -155,6 +163,7 @@ if ($action === 'update_status') {
 
 if ($action === 'add_update') {
     // Adicionar Atendimento
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $content = $_POST['content'] ?? '';
     
@@ -169,6 +178,7 @@ if ($action === 'add_update') {
 }
 
 if ($action === 'reassign') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $new_user_id = $_POST['user_id'] ?? 0;
     
@@ -183,6 +193,7 @@ if ($action === 'reassign') {
 }
 
 if ($action === 'share_task') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $user_id_to_share = $_POST['user_id'] ?? 0;
     
@@ -196,6 +207,7 @@ if ($action === 'share_task') {
 }
 
 if ($action === 'unshare_task') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $user_id_to_unshare = $_POST['user_id'] ?? 0;
     
@@ -206,6 +218,7 @@ if ($action === 'unshare_task') {
 }
 
 if ($action === 'update_details') {
+    $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
     $start_date = $_POST['start_date'] ?? null;
     $due_date = $_POST['due_date'] ?? null;

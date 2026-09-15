@@ -4,14 +4,15 @@ require_once 'config.php';
 session_start();
 
 $action = $_GET['action'] ?? '';
-$pdo = getConnection();
 
 if ($action === 'list') {
+    $pdo = getConnection();
     $stmt = $pdo->query("SELECT id, name, email, role, avatar FROM users ORDER BY name");
     jsonResponse(['success' => true, 'users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 if ($action === 'create') {
+    $pdo = getConnection();
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -40,6 +41,7 @@ if ($action === 'create') {
 }
 
 if ($action === 'update') {
+    $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -66,6 +68,7 @@ if ($action === 'update') {
 }
 
 if ($action === 'delete') {
+    $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     
     if ($id == 1) { // Proteção básica para o admin inicial
@@ -82,6 +85,7 @@ if ($action === 'delete') {
 }
 
 if ($action === 'update_avatar') {
+    $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     if (!$id && isset($_SESSION['user_id'])) {
         $id = $_SESSION['user_id'];

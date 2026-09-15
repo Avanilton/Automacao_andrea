@@ -31,12 +31,18 @@ define('CONDADO_DB_PASS', '@bv2026@');
 
 function getConnection() {
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8", DB_USER, DB_PASS);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 5,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET wait_timeout=5"
+        ];
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         return $pdo;
     } catch (PDOException $e) {
         ob_clean();
+        http_response_code(503);
         die(json_encode(['error' => 'Falha na conexão com o banco local: ' . $e->getMessage()]));
     }
 }
@@ -45,12 +51,17 @@ function getCondadoConnection() {
     // ---- AMBIENTE DE PRODUÇÃO (Conexão com o Condado Oficial) ----
     try {
         $dsn = "mysql:host=" . CONDADO_DB_HOST . ";port=" . CONDADO_DB_PORT . ";dbname=" . CONDADO_DB_NAME . ";charset=utf8";
-        $pdo = new PDO($dsn, CONDADO_DB_USER, CONDADO_DB_PASS);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 10,
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET wait_timeout=10"
+        ];
+        $pdo = new PDO($dsn, CONDADO_DB_USER, CONDADO_DB_PASS, $options);
         return $pdo;
     } catch (PDOException $e) {
         ob_clean();
+        http_response_code(503);
         die(json_encode(['error' => 'Falha na conexão com o Condado: ' . $e->getMessage()]));
     }
 }

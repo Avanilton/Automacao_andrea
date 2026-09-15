@@ -199,17 +199,18 @@ const views = {
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Trocar Senha</h4>
                     <div class="input-group">
                         <label>Senha Atual</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="currentPassword" class="form-control">
                     </div>
                     <div class="input-group">
                         <label>Nova Senha</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="newPassword" class="form-control">
                     </div>
                     <div class="input-group">
                         <label>Confirmar Nova Senha</label>
-                        <input type="password" class="form-control">
+                        <input type="password" id="confirmPassword" class="form-control">
                     </div>
-                    <button class="btn-primary" style="margin-top: 1rem;" onclick="alert('Senha atualizada!')">Atualizar Senha</button>
+                    <div id="passwordMessage" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    <button class="btn-primary" style="margin-top: 1rem;" onclick="changePassword()">Atualizar Senha</button>
                 </div>
             </div>
             
@@ -711,6 +712,57 @@ window.editUser = function (id) {
     document.getElementById('createUserModal').classList.remove('hidden');
 };
 
+window.changePassword = async function () {
+    const msgEl = document.getElementById('passwordMessage');
+    const current = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (!current || !newPass || !confirm) {
+        msgEl.textContent = 'Preencha todos os campos.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (newPass !== confirm) {
+        msgEl.textContent = 'As senhas não coincidem.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    if (newPass.length < 6) {
+        msgEl.textContent = 'A nova senha deve ter no mínimo 6 caracteres.';
+        msgEl.style.color = '#ef4444';
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('current_password', current);
+        formData.append('new_password', newPass);
+
+        const res = await fetch('api/auth.php?action=change_password', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            msgEl.textContent = data.message || 'Senha atualizada!';
+            msgEl.style.color = '#10B981';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            msgEl.textContent = data.error || 'Erro ao atualizar senha.';
+            msgEl.style.color = '#ef4444';
+        }
+    } catch (e) {
+        msgEl.textContent = 'Erro de conexão com o servidor.';
+        msgEl.style.color = '#ef4444';
+    }
+};
+
 window.deleteUser = async function (id) {
     if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
 
@@ -1140,7 +1192,8 @@ window.loadTarefas = async function () {
                 if (data && data.error) {
                     alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
                 }
-                window.currentLoadedTasks = [];
+window.currentLoadedTasks = [];
+window.currentOpenTaskId = null;
             }
         } catch (jsonErr) {
             console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
@@ -1157,77 +1210,46 @@ window.loadTarefas = async function () {
         return;
     }
 
-    tbody.innerHTML = '';
+    const isAdmin = user && user.role === 'admin';
+    const baseStyle = 'white-space: nowrap; font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 4px; color: white; display: inline-block; text-align: center;';
+    const statusMap = {
+        todo: { label: 'A Fazer', bg: '#64748B' },
+        in_progress: { label: 'Atendendo', bg: '#3B82F6' },
+        doing: { label: 'Atendendo', bg: '#3B82F6' },
+        done: { label: 'Finalizado', bg: '#10B981' }
+    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    window.currentLoadedTasks.forEach((t) => {
-        let sharedArray = t.shared_with || [];
+    let html = '';
+    const fragment = window.currentLoadedTasks;
+    const len = fragment.length;
 
-        const isAdmin = user && user.role === 'admin';
-        const isAssigned = user && t.assigned_to == user.id;
-        const isShared = user && sharedArray.includes(String(user.id));
+    for (let i = 0; i < len; i++) {
+        const t = fragment[i];
+        if (!isAdmin && t.assigned_to != user.id && !(t.shared_with || []).includes(String(user.id))) continue;
 
-        if (!isAdmin && !isAssigned && !isShared) return;
-
-        let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
+        const assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
         let userName = assignedUser ? assignedUser.name : 'Não atribuído';
+        if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
 
-        if (sharedArray.length > 0) {
-            userName += ` (+${sharedArray.length})`;
-        }
+        const clientText = t.client ? `${t.client} <br><small style="color:var(--text-muted)">Atendente: ${userName}</small>` : userName;
 
-        let clientText = t.client ? `${t.client} <br><small style="color:var(--text-muted)">Atendente: ${userName}</small>` : userName;
+        let delBtn = isAdmin ? `<button class="btn-secondary danger-text" onclick="deleteServerTask('${t.id}')">Excluir</button>` : '';
 
-        let actionButtons = `<div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>`;
-
-        if (user && user.role === 'admin') {
-            actionButtons += `<button class="btn-secondary danger-text" onclick="deleteServerTask('${t.id}')">Excluir</button>`;
-        }
-        
-        actionButtons += `</div>`;
-
-        let colDef = typeof localColumns !== 'undefined' ? localColumns.find(c => c.status_key === t.status) : null;
-        let statusLabel = 'A Fazer';
-        let baseStyle = 'white-space: nowrap; font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 4px; color: white; display: inline-block; text-align: center;';
-        let bgClass = baseStyle + ' background: #64748B;';
-
-        if (t.status === 'todo') {
-            statusLabel = colDef ? colDef.title : 'A Fazer';
-            bgClass = baseStyle + ' background: #64748B;';
-        } else if (t.status === 'doing' || t.status === 'in_progress') {
-            statusLabel = colDef ? colDef.title : 'Atendendo';
-            bgClass = baseStyle + ' background: #3B82F6;';
-        } else if (t.status === 'done') {
-            statusLabel = colDef ? colDef.title : 'Finalizado';
-            bgClass = baseStyle + ' background: #10B981;';
-        } else if (t.status) {
-            statusLabel = colDef ? colDef.title : (t.status.charAt(0).toUpperCase() + t.status.slice(1));
-            bgClass = baseStyle + ' background: var(--primary);';
-        }
-
+        let statusInfo = statusMap[t.status] || (t.status ? { label: t.status.charAt(0).toUpperCase() + t.status.slice(1), bg: 'var(--primary)' } : { label: 'A Fazer', bg: '#64748B' });
         let dueWarning = '';
         if (t.due_date && t.status !== 'done') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
             const due = new Date(t.due_date + 'T00:00:00');
-            const diffTime = due - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays === 1) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">\u26A0\ufe0f Vence Amanhã</span>`;
-            } else if (diffDays < 0) {
-                dueWarning = `<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">\u26A0\ufe0f Atrasado</span>`;
-            }
+            const diffDays = Math.ceil((due - today) / 86400000);
+            if (diffDays === 1) dueWarning = '<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">\u26A0\ufe0f Vence Amanhã</span>';
+            else if (diffDays < 0) dueWarning = '<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">\u26A0\ufe0f Atrasado</span>';
         }
 
-        tbody.innerHTML += `
-                <tr>
-                    <td>${t.name} ${dueWarning}</td>
-                    <td>${clientText}</td>
-                    <td>${t.created_at}</td>
-                    <td><span class="label" style="${bgClass}">${statusLabel}</span></td>
-                    <td>${actionButtons}</td>
-                </tr>
-            `;
-    });
+        html += `<tr><td>${t.name} ${dueWarning}</td><td>${clientText}</td><td>${t.created_at}</td><td><span class="label" style="${baseStyle} background: ${statusInfo.bg};">${statusInfo.label}</span></td><td><div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>${delBtn}</div></td></tr>`;
+    }
+
+    tbody.innerHTML = html;
 }
 
 window.filterTarefas = function() {
@@ -1323,83 +1345,74 @@ window.loadKanbanCards = async function () {
         board.appendChild(colDiv);
     });
 
-    // Populate cards from API
-    try {
-        const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-        const text = await res.text();
+    // Reusa dados já carregados, busca na API apenas se vazio
+    if (!window.currentLoadedTasks || window.currentLoadedTasks.length === 0) {
         try {
-            const data = JSON.parse(text);
-            if (data && data.success) {
-                window.currentLoadedTasks = data.tasks;
-            } else {
-                if (data && data.error) {
-                    alert("Erro no servidor (Kanban): " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
+            const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
+            const text = await res.text();
+            try {
+                const data = JSON.parse(text);
+                if (data && data.success) {
+                    window.currentLoadedTasks = data.tasks;
+                } else {
+                    if (data && data.error) {
+                        alert("Erro no servidor (Kanban): " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
+                    }
                 }
+            } catch (e) {
+                console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);
             }
         } catch (e) {
-            console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);
+            console.error("Erro no fetch de Kanban", e);
         }
-    } catch (e) {
-        console.error("Erro no fetch de Kanban", e);
     }
 
-    let savedTasks = window.currentLoadedTasks || [];
+    const savedTasks = window.currentLoadedTasks || [];
+    const isAdmin = user && user.role === 'admin';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    savedTasks.forEach((t) => {
-        let sharedArray = t.shared_with || [];
+    // Pré-agrupa cards por coluna para evitar querySelector repetido
+    const colCards = {};
+    localColumns.forEach(col => {
+        colCards[col.status_key] = [];
+    });
 
-        const isAdmin = user && user.role === 'admin';
-        const isAssigned = user && t.assigned_to == user.id;
-        const isShared = user && sharedArray.includes(String(user.id));
+    for (let i = 0; i < savedTasks.length; i++) {
+        const t = savedTasks[i];
+        if (!isAdmin && t.assigned_to != user.id && !(t.shared_with || []).includes(String(user.id))) continue;
 
-        // Admin vê todos os cards. Usuário comum vê só os atribuídos a ele ou compartilhados com ele.
-        if (!isAdmin && !isAssigned && !isShared) return;
-
-        let assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
+        const assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
         let userName = assignedUser ? assignedUser.name : 'Não atribuído';
-
-        if (sharedArray.length > 0) {
-            userName += ` (+${sharedArray.length})`;
-        }
+        if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
 
         let status = t.status || 'todo';
-        let col = document.querySelector(`#col-${status} .column-cards`);
-        if (!col) col = document.querySelector('#col-todo .column-cards');
+        let deleteBtn = isAdmin ? `<button class="icon-btn danger-text" style="position: absolute; top: 10px; right: 10px; padding: 2px; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteServerTask('${t.id}')">Excluir</button>` : '';
 
-        if (col) {
-            let deleteBtn = '';
-            if (user && user.role === 'admin') {
-                deleteBtn = `<button class="icon-btn danger-text" style="position: absolute; top: 10px; right: 10px; padding: 2px; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteServerTask('${t.id}')">Excluir</button>`;
-            }
-
-            col.innerHTML += `
-                    <div class="kanban-card" id="card-${t.id}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${t.id}')">
-                        ${deleteBtn}
-                        <div class="card-labels">
-                            <span class="label" style="background: var(--primary)">${t.type}</span>
-                        </div>
-                        
-                        ${function () {
-                    let w = '';
-                    if (t.due_date && t.status !== 'done') {
-                        const today = new Date(); today.setHours(0, 0, 0, 0);
-                        const due = new Date(t.due_date + 'T00:00:00');
-                        const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-                        if (diffDays === 1) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Vence Amanhã</span>`;
-                        else if (diffDays < 0) w = `<span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span>`;
-                    }
-                    return w ? '<div style="margin-top:5px;">' + w + '</div>' : '';
-                }()}
-
-                        <div class="card-title" style="margin-top: 5px;">${t.name}</div>
-                        <div class="card-client">${t.client || 'Sem cliente'}</div>
-                        <div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
-                            <span>Atrib: ${userName}</span>
-                        </div>
-                    </div>
-                `;
+        let dueWarning = '';
+        if (t.due_date && t.status !== 'done') {
+            const due = new Date(t.due_date + 'T00:00:00');
+            const diffDays = Math.ceil((due - today) / 86400000);
+            if (diffDays === 1) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Vence Amanhã</span></div>';
+            else if (diffDays < 0) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span></div>';
         }
-    });
+
+        const card = `<div class="kanban-card" id="card-${t.id}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${t.id}')">${deleteBtn}<div class="card-labels"><span class="label" style="background: var(--primary)">${t.type}</span></div>${dueWarning}<div class="card-title" style="margin-top: 5px;">${t.name}</div><div class="card-client">${t.client || 'Sem cliente'}</div><div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);"><span>Atrib: ${userName}</span></div></div>`;
+
+        if (colCards[status]) {
+            colCards[status].push(card);
+        } else {
+            if (colCards['todo']) colCards['todo'].push(card);
+        }
+    }
+
+    // Injeta HTML de uma vez por coluna (evita innerHTML +=)
+    for (const key in colCards) {
+        if (colCards[key].length > 0) {
+            const el = document.querySelector(`#col-${key} .column-cards`);
+            if (el) el.innerHTML = colCards[key].join('');
+        }
+    }
 
     updateKanbanCounters();
 }
@@ -1418,6 +1431,7 @@ window.promptAddColumn = function () {
 }
 
 window.openTaskDetails = function (taskId) {
+    window.currentOpenTaskId = taskId;
     let savedTasks = window.currentLoadedTasks || [];
     let t = savedTasks.find(task => task.id == taskId);
     if (!t) return;
@@ -1428,6 +1442,13 @@ window.openTaskDetails = function (taskId) {
 
     modalOverlay.classList.remove('hidden');
     document.getElementById('taskDetailsModal').classList.remove('hidden');
+
+    const dynDetails = document.getElementById('dynamicClientDetails');
+    if (dynDetails) dynDetails.innerHTML = '';
+    const actLog = document.getElementById('activityLog');
+    if (actLog) actLog.innerHTML = '';
+    const taskUpdates = document.getElementById('taskUpdatesList');
+    if (taskUpdates) taskUpdates.innerHTML = '';
 
     let statusOptionsHtml = '';
     if (typeof localColumns !== 'undefined') {
@@ -1852,7 +1873,7 @@ if (btnSaveUpdate) {
         // Try to hit API if real ID is available (Mocked ID 1 here for demo)
         try {
             const formData = new FormData();
-            formData.append('task_id', 1);
+            formData.append('task_id', window.currentOpenTaskId);
             formData.append('content', content);
 
             await fetch('api/tasks.php?action=add_update', {

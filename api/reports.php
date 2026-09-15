@@ -7,9 +7,8 @@ session_start();
 $user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
 $role = $_SESSION['role'] ?? 'user';
 
-$pdo = getConnection();
-
 try {
+    $pdo = getConnection();
     $where = "WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00'";
     $params = [];
     
