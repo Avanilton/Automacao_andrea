@@ -178,21 +178,23 @@ const views = {
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Dados do Perfil</h4>
                     <div style="display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1.5rem;">
-                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 2.5rem;" id="settingsAvatarPreview">${user ? user.name.charAt(0).toUpperCase() : 'U'}</div>
+                        <div class="avatar-circle" style="width: 80px; height: 80px; font-size: 2.5rem;" id="settingsAvatarPreview">${user && user.avatar ? '<img src="' + user.avatar + '" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">' : (user ? user.name.charAt(0).toUpperCase() : 'U')}</div>
                         <div>
-                            <button class="btn-secondary btn-sm">Definir Avatar</button>
+                            <input type="file" id="settingsAvatarUpload" accept="image/*" style="display: none;" onchange="handleSettingsAvatarUpload(event)">
+                            <button class="btn-secondary btn-sm" onclick="document.getElementById('settingsAvatarUpload').click()">Definir Avatar</button>
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">JPG, GIF ou PNG. Max 1MB.</p>
                         </div>
                     </div>
                     <div class="input-group">
                         <label>Nome Completo</label>
-                        <input type="text" class="form-control" value="${user ? user.name : ''}">
+                        <input type="text" class="form-control" id="profileName" value="${user ? user.name : ''}">
                     </div>
                     <div class="input-group">
                         <label>Email</label>
-                        <input type="email" class="form-control" value="${user ? user.email : ''}" readonly>
+                        <input type="email" class="form-control" id="profileEmail" value="${user ? user.email : ''}">
                     </div>
-                    <button class="btn-primary" style="margin-top: 1rem;" onclick="alert('Perfil salvo!')">Salvar Perfil</button>
+                    <div id="profileMessage" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    <button class="btn-primary" style="margin-top: 1rem;" onclick="saveProfile()">Salvar Perfil</button>
                 </div>
                 
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -219,6 +221,13 @@ const views = {
                 <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Submenu Administrativo</h4>
                 <p style="margin-bottom: 1rem; color: var(--text-muted);">Definir e ajustar permissões de acesso dos usuários no sistema.</p>
                 <button class="btn-secondary" onclick="document.querySelector('[data-view=permissoes]').click()">Gerenciar Permissões</button>
+            </div>
+
+            <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-top: 2rem;">
+                <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Chamados Abertos</h4>
+                <div id="ticketsContainer">
+                    <p style="color: var(--text-muted);">Carregando chamados...</p>
+                </div>
             </div>
             ` : ''}
         </div>`,
@@ -354,7 +363,7 @@ const views = {
 
                 <div style="background: var(--bg-surface); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
                     <h4 style="margin-bottom: 1.5rem; color: var(--primary);">Abrir Chamado</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Seu usuário e o horário da abertura serão registrados e anexados automaticamente ao enviar.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Seu usuário e o horário da abertura serão registrados automaticamente.</p>
                     
                     <div class="input-group">
                         <label>Assunto</label>
@@ -364,7 +373,8 @@ const views = {
                         <label>Descrição detalhada</label>
                         <textarea id="ticketMessage" class="form-control" rows="5" placeholder="Forneça os detalhes e passos para reproduzir o problema..."></textarea>
                     </div>
-                    <button class="btn-primary" style="width: 100%;" onclick="alert('Chamado aberto com sucesso! Enviando ticket em nome de: ${user ? user.name : 'Desconhecido'} às ' + new Date().toLocaleString())">Enviar Chamado</button>
+                    <div id="ticketFeedback" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
+                    <button class="btn-primary" style="width: 100%;" onclick="sendTicket()">Enviar Chamado</button>
                 </div>
             </div>
         </div>`
@@ -402,6 +412,8 @@ function loadView(viewName) {
         if (targetView.isFirstLoad) loadPermissions();
     } else if (viewName === 'relatorios') {
         if (targetView.isFirstLoad && typeof loadRelatorios === 'function') loadRelatorios();
+    } else if (viewName === 'configuracoes') {
+        if (targetView.isFirstLoad) loadTickets();
     }
 }
 
@@ -450,7 +462,7 @@ function processExcelFile(file) {
             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
             if (rows.length < 2) {
-                alert("A planilha parece estar vazia ou sem dados.");
+                showToast("A planilha parece estar vazia ou sem dados.", 'error');
                 return;
             }
 
@@ -526,7 +538,7 @@ function processExcelFile(file) {
             }
 
             if (parsedTasks.length === 0) {
-                alert("Nenhuma tarefa válida encontrada na planilha.");
+                showToast("Nenhuma tarefa válida encontrada na planilha.", 'error');
                 return;
             }
 
@@ -537,7 +549,7 @@ function processExcelFile(file) {
 
         } catch (err) {
             console.error("Erro ao ler excel: ", err);
-            alert("Erro ao processar o arquivo. Verifique o console.");
+            showToast("Erro ao processar o arquivo. Verifique o console.", 'error');
         }
     };
     reader.readAsBinaryString(file);
@@ -552,16 +564,16 @@ function sendImportRequest(tasksList) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert("Tarefas importadas com sucesso!");
+            showToast("Tarefas importadas com sucesso!");
             if (typeof loadTarefas === 'function') loadTarefas();
             if (typeof loadKanbanCards === 'function') loadKanbanCards();
         } else {
-            alert("Erro ao importar: " + (data.error || "Desconhecido"));
+            showToast("Erro ao importar: " + (data.error || "Desconhecido"), 'error');
         }
     })
     .catch(err => {
         console.error(err);
-        alert("Erro na requisição.");
+        showToast("Erro na requisição.", 'error');
     });
 }
 
@@ -606,11 +618,11 @@ window.savePermissions = function () {
         .then(data => {
             if (data.success) {
                 window.appPermissions = perms;
-                alert("Permissões de acesso para Usuário Padrão foram salvas com sucesso para todos os usuários!");
+                showToast("Permissões salvas com sucesso!");
             }
         })
         .catch(e => {
-            alert("Erro ao salvar permissões no servidor.");
+            showToast("Erro ao salvar permissões.", 'error');
         });
 };
 
@@ -662,7 +674,7 @@ window.saveUser = async function () {
     const role = document.getElementById('newUserRole').value;
 
     if (!name || !email || (!password && !window.currentEditingUserId)) {
-        alert("Preencha nome e e-mail (a senha é obrigatória para novos usuários).");
+        showToast("Preencha nome e e-mail (a senha é obrigatória para novos usuários).", 'error');
         return;
     }
 
@@ -682,18 +694,18 @@ window.saveUser = async function () {
         const data = await res.json();
 
         if (data && data.success) {
-            alert(`Usuário ${window.currentEditingUserId ? 'atualizado' : 'cadastrado'} com sucesso!`);
+            showToast(`Usuário ${window.currentEditingUserId ? 'atualizado' : 'cadastrado'} com sucesso!`);
             document.getElementById('createUserModal').classList.add('hidden');
             document.getElementById('modalOverlay').classList.add('hidden');
             document.getElementById('formCreateUser').reset();
             window.currentEditingUserId = null;
             loadUsers();
         } else {
-            alert("Erro ao cadastrar/atualizar: " + (data.message || 'Desconhecido'));
+            showToast("Erro ao cadastrar/atualizar: " + (data.message || 'Desconhecido'), 'error');
         }
     } catch (e) {
         console.error(e);
-        alert("Falha ao comunicar com o servidor.");
+        showToast("Falha ao comunicar com o servidor.", 'error');
     }
 };
 
@@ -777,14 +789,14 @@ window.deleteUser = async function (id) {
         const data = await res.json();
 
         if (data && data.success) {
-            alert("Usuário excluído com sucesso!");
+            showToast("Usuário excluído com sucesso!");
             loadUsers();
         } else {
-            alert(data.message || 'Erro ao excluir usuário.');
+            showToast(data.message || 'Erro ao excluir usuário.', 'error');
         }
     } catch (e) {
         console.error(e);
-        alert("Falha ao comunicar com o servidor.");
+        showToast("Falha ao comunicar com o servidor.", 'error');
     }
 };
 
@@ -839,16 +851,18 @@ window.loadLixeira = async function () {
 }
 
 window.restoreTrash = async function (id) {
+    if (!confirm('Tem certeza que deseja restaurar este item?')) return;
     try {
         const formData = new FormData();
         formData.append('task_id', id);
         await fetch('api/tasks.php?action=restore', { method: 'POST', body: formData });
-        alert('Item restaurado com sucesso!');
+        showToast('Item restaurado com sucesso!');
         loadLixeira();
         loadTarefas();
         loadKanbanCards();
     } catch (e) {
         console.error(e);
+        showToast('Erro ao restaurar item.', 'error');
     }
 }
 
@@ -858,10 +872,11 @@ window.forceDeleteTrash = async function (id) {
             const formData = new FormData();
             formData.append('task_id', id);
             await fetch('api/tasks.php?action=force_delete', { method: 'POST', body: formData });
-            alert('Item excluído para sempre.');
+            showToast('Item excluído para sempre.');
             loadLixeira();
         } catch (e) {
             console.error(e);
+            showToast('Erro ao excluir item.', 'error');
         }
     }
 }
@@ -886,6 +901,7 @@ window.deleteColumn = function (status_key) {
             // Remove from local array
             localColumns = localColumns.filter(c => c.status_key !== status_key);
             loadKanbanCards(); // re-render
+            showToast('Coluna excluída com sucesso.');
         }
     }
 }
@@ -1039,7 +1055,7 @@ if (btnDistribute) {
     btnDistribute.onclick = async () => {
         const checked = document.querySelectorAll('.task-check:checked');
         if (checked.length === 0) {
-            alert('Selecione pelo menos uma tarefa para distribuir.');
+            showToast('Selecione pelo menos uma tarefa para distribuir.', 'error');
             return;
         }
 
@@ -1068,7 +1084,7 @@ if (btnConfirmDistribute) {
     btnConfirmDistribute.onclick = () => {
         const userId = document.getElementById('assignToUser').value;
         if (!userId) {
-            alert('Selecione um usuário.');
+            showToast('Selecione um usuário.', 'error');
             return;
         }
 
@@ -1097,19 +1113,19 @@ if (btnConfirmDistribute) {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(`Sucesso! ${tasksToSave.length} tarefa(s) distribuída(s) com sucesso.`);
+                    showToast(`${tasksToSave.length} tarefa(s) distribuída(s) com sucesso.`);
                     document.getElementById('distributeTasksModal').classList.add('hidden');
                     const modalOverlay = document.getElementById('modalOverlay');
                     if (modalOverlay) modalOverlay.classList.add('hidden');
                     if (typeof loadTarefas === 'function') loadTarefas();
                     if (typeof loadKanbanCards === 'function') loadKanbanCards();
                 } else {
-                    alert("Erro ao distribuir: " + (data.error || 'Erro desconhecido'));
+                    showToast("Erro ao distribuir: " + (data.error || 'Erro desconhecido'), 'error');
                 }
             })
             .catch(e => {
                 console.error(e);
-                alert("Falha ao se comunicar com a API de distribuição.");
+                showToast("Falha ao comunicar com o servidor.", 'error');
             });
 
         document.getElementById('distributeTasksModal').classList.add('hidden');
@@ -1287,14 +1303,14 @@ window.truncateAllData = async function() {
         const res = await fetch('api/tasks.php?action=truncate_tasks', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            alert('Dados apagados com sucesso.');
-            location.reload();
+            showToast('Dados apagados com sucesso.');
+            setTimeout(() => location.reload(), 1000);
         } else {
-            alert('Erro ao apagar dados: ' + (data.error || 'Desconhecido'));
+            showToast('Erro ao apagar dados: ' + (data.error || 'Desconhecido'), 'error');
         }
     } catch (e) {
         console.error(e);
-        alert('Erro ao apagar dados. Verifique a conexão.');
+        showToast('Erro ao apagar dados. Verifique a conexão.', 'error');
     }
 }
 
@@ -1306,7 +1322,8 @@ window.deleteServerTask = async function (id) {
             await fetch('api/tasks.php?action=soft_delete', { method: 'POST', body: formData });
             loadTarefas();
             if (typeof loadKanbanCards === 'function') loadKanbanCards();
-        } catch (e) { console.error(e); }
+            showToast('Tarefa movida para a Lixeira.');
+        } catch (e) { console.error(e); showToast('Erro ao excluir tarefa.', 'error'); }
     }
 }
 
@@ -1637,14 +1654,14 @@ window.openTaskDetails = function (taskId) {
                     t.start_date = start;
                     t.due_date = due;
                     if (typeof logActivity === 'function') logActivity(`Detalhes da tarefa atualizados (Data/Obs)`);
-                    alert('Alterações salvas com sucesso!');
+                    showToast('Alterações salvas com sucesso!');
                     await reloadUIAndModal(null);
                 } else {
-                    alert('Erro ao salvar alterações.');
+                    showToast('Erro ao salvar alterações.', 'error');
                 }
             } catch (e) {
                 console.error(e);
-                alert('Falha na comunicação ao tentar salvar.');
+                showToast('Falha na comunicação ao tentar salvar.', 'error');
             }
         };
     }
@@ -1660,17 +1677,17 @@ window.openTaskDetails = function (taskId) {
                     const res = await fetch('api/tasks.php?action=soft_delete', { method: 'POST', body: formData });
                     const result = await res.json();
                     if (result.success) {
-                        alert('Tarefa movida para a Lixeira.');
+                        showToast('Tarefa movida para a Lixeira.');
                         document.getElementById('taskDetailsModal').classList.add('hidden');
                         document.getElementById('modalOverlay').classList.add('hidden');
                         await loadTarefas();
                         await loadKanbanCards();
                     } else {
-                        alert('Erro ao excluir tarefa.');
+                        showToast('Erro ao excluir tarefa.', 'error');
                     }
                 } catch (e) {
                     console.error(e);
-                    alert('Falha na comunicação com o servidor.');
+                    showToast('Falha na comunicação com o servidor.', 'error');
                 }
             }
         };
@@ -1719,7 +1736,8 @@ window.shareTaskWithUser = async function (taskId, userId) {
         logActivity(`Tarefa compartilhada com: ${sUser ? sUser.name : 'Desconhecido'}`);
 
         await reloadUIAndModal(taskId);
-    } catch (e) { console.error(e); }
+        showToast('Tarefa compartilhada com sucesso.');
+    } catch (e) { console.error(e); showToast('Erro ao compartilhar tarefa.', 'error'); }
 }
 
 window.unshareTaskWithUser = async function (taskId, userId) {
@@ -1734,7 +1752,8 @@ window.unshareTaskWithUser = async function (taskId, userId) {
         logActivity(`Compartilhamento removido de: ${sUser ? sUser.name : 'Desconhecido'}`);
 
         await reloadUIAndModal(taskId);
-    } catch (e) { console.error(e); }
+        showToast('Compartilhamento removido.');
+    } catch (e) { console.error(e); showToast('Erro ao remover compartilhamento.', 'error'); }
 }
 
 window.changeTaskStatus = async function (taskId, newStatus) {
@@ -1990,12 +2009,283 @@ window.handleAvatarUpload = async function (e) {
                 if (userAvatarEl) {
                     userAvatarEl.innerHTML = '<img src=\"' + data.avatar + '\" style=\"width:100%; height:100%; border-radius:50%; object-fit:cover;\">';
                 }
-                alert('Avatar atualizado com sucesso!');
+                const settingsPreview = document.getElementById('settingsAvatarPreview');
+                if (settingsPreview) {
+                    settingsPreview.innerHTML = '<img src=\"' + data.avatar + '\" style=\"width:100%; height:100%; border-radius:50%; object-fit:cover;\">';
+                }
+                showToast('Avatar atualizado com sucesso!');
             } else {
-                alert(data.message || 'Erro ao atualizar avatar.');
+                showToast(data.message || 'Erro ao atualizar avatar.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Falha na comunica��o ao atualizar avatar.');
+            showToast('Falha na comunicação ao atualizar avatar.', 'error');
         }
+    };
+
+window.handleSettingsAvatarUpload = async function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const formData = new FormData();
+            formData.append('avatar', file);
+            let userStr = localStorage.getItem('cobranca_user');
+            let user = JSON.parse(userStr || '{}');
+            if (user && user.id) formData.append('id', user.id);
+            const res = await fetch('api/users.php?action=update_avatar', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                user.avatar = data.avatar;
+                localStorage.setItem('cobranca_user', JSON.stringify(user));
+                const userAvatarEl = document.getElementById('sidebarAvatar');
+                if (userAvatarEl) {
+                    userAvatarEl.innerHTML = '<img src=\"' + data.avatar + '\" style=\"width:100%; height:100%; border-radius:50%; object-fit:cover;\">';
+                }
+                const settingsPreview = document.getElementById('settingsAvatarPreview');
+                if (settingsPreview) {
+                    settingsPreview.innerHTML = '<img src=\"' + data.avatar + '\" style=\"width:100%; height:100%; border-radius:50%; object-fit:cover;\">';
+                }
+                showToast('Avatar atualizado com sucesso!');
+            } else {
+                showToast(data.message || 'Erro ao atualizar avatar.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Falha na comunicação ao atualizar avatar.', 'error');
+        }
+    };
+
+window.saveProfile = async function () {
+        const name = document.getElementById('profileName').value.trim();
+        const email = document.getElementById('profileEmail').value.trim();
+        const messageEl = document.getElementById('profileMessage');
+
+        if (!name || !email) {
+            messageEl.innerHTML = '<span style="color: var(--danger);">Nome e email são obrigatórios.</span>';
+            return;
+        }
+
+        let userStr = localStorage.getItem('cobranca_user');
+        let user = JSON.parse(userStr || '{}');
+
+        try {
+            const formData = new FormData();
+            formData.append('id', user.id);
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('role', user.role);
+
+            const res = await fetch('api/users.php?action=update', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                user.name = name;
+                user.email = email;
+                localStorage.setItem('cobranca_user', JSON.stringify(user));
+
+                const userNameEl = document.getElementById('sidebarUserName');
+                if (userNameEl) userNameEl.textContent = name;
+
+                messageEl.innerHTML = '<span style="color: var(--primary);">Perfil atualizado com sucesso!</span>';
+            } else {
+                messageEl.innerHTML = '<span style="color: var(--danger);">' + (data.message || 'Erro ao salvar.') + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            messageEl.innerHTML = '<span style="color: var(--danger);">Falha na comunicação.</span>';
+        }
+    };
+
+window.sendTicket = async function () {
+        const subject = document.getElementById('ticketSubject').value.trim();
+        const message = document.getElementById('ticketMessage').value.trim();
+        const feedbackEl = document.getElementById('ticketFeedback');
+
+        if (!subject || !message) {
+            feedbackEl.innerHTML = '<span style="color: var(--danger);">Assunto e descrição são obrigatórios.</span>';
+            return;
+        }
+
+        let userStr = localStorage.getItem('cobranca_user');
+        let user = JSON.parse(userStr || '{}');
+
+        try {
+            const res = await fetch('api/tickets.php?action=create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    user_name: user.name,
+                    user_email: user.email,
+                    subject: subject,
+                    message: message
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('ticketSubject').value = '';
+                document.getElementById('ticketMessage').value = '';
+                feedbackEl.innerHTML = '<span style="color: var(--primary);">Chamado #' + data.ticket_id + ' aberto com sucesso!</span>';
+            } else {
+                feedbackEl.innerHTML = '<span style="color: var(--danger);">' + (data.message || 'Erro ao enviar.') + '</span>';
+            }
+        } catch (err) {
+            console.error(err);
+            feedbackEl.innerHTML = '<span style="color: var(--danger);">Falha na comunicação.</span>';
+        }
+    };
+
+window.loadTickets = async function () {
+        const container = document.getElementById('ticketsContainer');
+        if (!container) return;
+
+        try {
+            const res = await fetch('api/tickets.php?action=list');
+            const data = await res.json();
+
+            if (data.success && data.tickets.length > 0) {
+                window._ticketsData = data.tickets;
+                let html = '<table class="data-table"><thead><tr>';
+                html += '<th>ID</th><th>Usuário</th><th>Assunto</th><th>Data</th><th>Status</th><th>Ações</th>';
+                html += '</tr></thead><tbody>';
+
+                data.tickets.forEach(ticket => {
+                    const statusColors = {
+                        'aberto': 'background: #FEF3C7; color: #92400E;',
+                        'em_andamento': 'background: #DBEAFE; color: #1E40AF;',
+                        'resolvido': 'background: #D1FAE5; color: #065F46;'
+                    };
+                    const statusLabels = {
+                        'aberto': 'Aberto',
+                        'em_andamento': 'Em Andamento',
+                        'resolvido': 'Resolvido'
+                    };
+                    const date = new Date(ticket.created_at).toLocaleDateString('pt-BR');
+
+                    html += '<tr>';
+                    html += '<td>#' + ticket.id + '</td>';
+                    html += '<td>' + ticket.user_name + '<br><small style="color: var(--text-muted);">' + ticket.user_email + '</small></td>';
+                    html += '<td><strong>' + ticket.subject + '</strong></td>';
+                    html += '<td>' + date + '</td>';
+                    html += '<td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; ' + statusColors[ticket.status] + '">' + statusLabels[ticket.status] + '</span></td>';
+                    html += '<td>';
+                    html += '<button class="btn-secondary btn-sm" onclick="viewTicket(' + ticket.id + ')">Ver</button> ';
+                    if (ticket.status !== 'resolvido') {
+                        html += '<button class="btn-secondary btn-sm" onclick="updateTicketStatus(' + ticket.id + ', \'' + (ticket.status === 'aberto' ? 'em_andamento' : 'resolvido') + '\')">' + (ticket.status === 'aberto' ? 'Iniciar' : 'Resolver') + '</button>';
+                    }
+                    html += '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">Nenhum chamado aberto.</p>';
+            }
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<p style="color: var(--danger);">Erro ao carregar chamados.</p>';
+        }
+    };
+
+window.updateTicketStatus = async function (id, newStatus) {
+        try {
+            const res = await fetch('api/tickets.php?action=update_status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, status: newStatus })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                loadTickets();
+                showToast('Status atualizado com sucesso!');
+            } else {
+                showToast(data.message || 'Erro ao atualizar status.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Falha na comunicação.', 'error');
+        }
+    };
+
+window.viewTicket = function (id) {
+        const ticket = window._ticketsData.find(t => t.id === id);
+        if (!ticket) return;
+
+        const statusColors = {
+            'aberto': 'background: #FEF3C7; color: #92400E;',
+            'em_andamento': 'background: #DBEAFE; color: #1E40AF;',
+            'resolvido': 'background: #D1FAE5; color: #065F46;'
+        };
+        const statusLabels = {
+            'aberto': 'Aberto',
+            'em_andamento': 'Em Andamento',
+            'resolvido': 'Resolvido'
+        };
+
+        const date = new Date(ticket.created_at).toLocaleDateString('pt-BR');
+        const messageHtml = ticket.message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+
+        const modalHTML = `
+            <div class="modal-overlay" id="ticketModalOverlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000;" onclick="closeTicketModal(event)">
+                <div class="modal" style="max-width:600px; width:90%; background:var(--bg-surface); border-radius:var(--radius-md); border:1px solid var(--border); border-top:3px solid var(--accent); box-shadow:var(--shadow-lg);" onclick="event.stopPropagation()">
+                    <div class="modal-header" style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0;">Chamado #${ticket.id}</h3>
+                        <button class="icon-btn" onclick="closeTicketModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+                    </div>
+                    <div class="modal-body" style="padding:1.5rem;">
+                        <div style="margin-bottom:1.5rem;">
+                            <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
+                                <div class="avatar-circle" style="width:40px; height:40px; font-size:1rem; flex-shrink:0;">${ticket.user_name.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <strong>${ticket.user_name}</strong><br>
+                                    <small style="color:var(--text-muted);">${ticket.user_email}</small>
+                                </div>
+                                <div style="margin-left:auto;">
+                                    <span style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:600; ${statusColors[ticket.status]}">${statusLabels[ticket.status]}</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.85rem; color:var(--text-muted);">Aberto em: ${date}</p>
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <h4 style="margin-bottom:0.5rem; color:var(--primary);">Assunto</h4>
+                            <p style="font-size:1rem;">${ticket.subject}</p>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom:0.5rem; color:var(--primary);">Descrição</h4>
+                            <div style="background:var(--bg-body); padding:1rem; border-radius:var(--radius-sm); border:1px solid var(--border); line-height:1.6;">${messageHtml}</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding:1.5rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:1rem;">
+                        <button class="btn-secondary" onclick="closeTicketModal()">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    };
+
+window.closeTicketModal = function (event) {
+        if (event && event.target.id !== 'ticketModalOverlay') return;
+        const modal = document.getElementById('ticketModalOverlay');
+        if (modal) modal.remove();
+    };
+
+window.showToast = function (message, type = 'success') {
+        const colors = {
+            success: 'background: #10B981;',
+            error: 'background: #EF4444;',
+            info: 'background: #3B82F6;'
+        };
+        const toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed; bottom:20px; right:20px; padding:1rem 1.5rem; color:#fff; border-radius:8px; z-index:9999; font-size:0.9rem; box-shadow:0 4px 12px rgba(0,0,0,0.3); animation:toastIn 0.3s ease; ' + (colors[type] || colors.success);
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'toastOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     };
