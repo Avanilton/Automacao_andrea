@@ -10,6 +10,7 @@ if ($action === 'get') {
         echo file_get_contents($settingsFile);
     } else {
         echo json_encode([
+            'view_tarefas' => true,
             'create_task' => false,
             'distribute_task' => false,
             'view_kanban' => true,

@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminSubmenu) adminSubmenu.classList.remove('hidden');
                 const navUsuarios = document.getElementById('navUsuarios');
                 if (navUsuarios) navUsuarios.style.display = 'flex';
+            } else {
+                applySidebarPermissions();
             }
         }
     } catch (err) {
@@ -49,6 +51,7 @@ mobileMenuBtn.addEventListener('click', () => {
 });
 
 window.appPermissions = {
+    view_tarefas: true,
     create_task: false,
     distribute_task: false,
     view_kanban: true,
@@ -62,6 +65,7 @@ fetch('api/settings.php?action=get')
     .then(res => res.json())
     .then(data => {
         if (data) window.appPermissions = data;
+        applySidebarPermissions();
         // Se já estiver na view de tarefas, recarrega para aplicar a permissão no botão
         if (document.getElementById('view-tarefas')) {
             const btn = document.getElementById('btnShowCreateTask');
@@ -75,6 +79,27 @@ fetch('api/settings.php?action=get')
 // --- Safe User Permissions ---
 function safeGetPermissions() {
     return window.appPermissions;
+}
+
+// --- Apply Permissions to Sidebar ---
+function applySidebarPermissions() {
+    if (!user || user.role === 'admin') return;
+    const perms = window.appPermissions;
+
+    const navTarefas = document.querySelector('a.nav-item[data-view="tarefas"]');
+    if (navTarefas) navTarefas.style.display = perms.view_tarefas ? 'flex' : 'none';
+
+    const navKanban = document.querySelector('a.nav-item[data-view="kanban"]');
+    if (navKanban) navKanban.style.display = perms.view_kanban ? 'flex' : 'none';
+
+    const navRelatorios = document.querySelector('a.nav-item[data-view="relatorios"]');
+    if (navRelatorios) navRelatorios.style.display = perms.view_reports ? 'flex' : 'none';
+
+    const navLixeira = document.querySelector('a.nav-item[data-view="lixeira"]');
+    if (navLixeira) navLixeira.style.display = perms.view_trash ? 'flex' : 'none';
+
+    const navConfig = document.querySelector('a.nav-item[data-view="configuracoes"]');
+    if (navConfig) navConfig.style.display = perms.view_config ? 'flex' : 'none';
 }
 
 // --- Navigation (SPA) ---
@@ -282,7 +307,7 @@ const views = {
                                     <small style="color:var(--text-muted)">Acesso à lista inicial de tarefas.</small>
                                 </td>
                                 <td style="text-align:center;"><input type="checkbox" checked disabled style="cursor: not-allowed;"></td>
-                                <td style="text-align:center;"><input type="checkbox" checked></td>
+                                <td style="text-align:center;"><input type="checkbox" checked id="perm_view_tarefas_user"></td>
                             </tr>
                             <tr style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 1.2rem;">
@@ -381,6 +406,22 @@ const views = {
 };
 
 function loadView(viewName) {
+    if (user && user.role !== 'admin') {
+        const perms = window.appPermissions;
+        const permMap = {
+            'kanban': 'view_kanban',
+            'relatorios': 'view_reports',
+            'lixeira': 'view_trash',
+            'configuracoes': 'view_config',
+            'tarefas': 'view_tarefas'
+        };
+        const requiredPerm = permMap[viewName];
+        if (requiredPerm && !perms[requiredPerm]) {
+            showToast('Você não tem permissão para acessar esta tela.', 'error');
+            return;
+        }
+    }
+
     let targetView = document.getElementById('rendered-view-' + viewName);
     if (!targetView) {
         targetView = document.createElement('div');
@@ -581,6 +622,9 @@ function sendImportRequest(tasksList) {
 window.loadPermissions = function () {
     const perms = safeGetPermissions();
 
+    const v_tarefas = document.getElementById('perm_view_tarefas_user');
+    if (v_tarefas) v_tarefas.checked = perms.view_tarefas;
+
     const c_task = document.getElementById('perm_create_task_user');
     if (c_task) c_task.checked = perms.create_task;
 
@@ -602,6 +646,7 @@ window.loadPermissions = function () {
 
 window.savePermissions = function () {
     const perms = {
+        view_tarefas: document.getElementById('perm_view_tarefas_user')?.checked || false,
         create_task: document.getElementById('perm_create_task_user')?.checked || false,
         distribute_task: document.getElementById('perm_distribute_task_user')?.checked || false,
         view_kanban: document.getElementById('perm_view_kanban_user')?.checked || false,
@@ -618,6 +663,7 @@ window.savePermissions = function () {
         .then(data => {
             if (data.success) {
                 window.appPermissions = perms;
+                applySidebarPermissions();
                 showToast("Permissões salvas com sucesso!");
             }
         })
@@ -910,6 +956,24 @@ navItems.forEach(item => {
     item.addEventListener('click', (e) => {
         // e.preventDefault();
         const viewName = item.getAttribute('data-view');
+
+        // Permission guard for non-admin users
+        if (user && user.role !== 'admin') {
+            const perms = window.appPermissions;
+            const permMap = {
+                'kanban': 'view_kanban',
+                'relatorios': 'view_reports',
+                'lixeira': 'view_trash',
+                'configuracoes': 'view_config',
+                'tarefas': 'view_tarefas'
+            };
+            const requiredPerm = permMap[viewName];
+            if (requiredPerm && !perms[requiredPerm]) {
+                showToast('Você não tem permissão para acessar esta tela.', 'error');
+                e.preventDefault();
+                return;
+            }
+        }
 
         // Update active class
         navItems.forEach(nav => nav.classList.remove('active'));
