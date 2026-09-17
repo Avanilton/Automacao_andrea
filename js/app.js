@@ -1972,6 +1972,43 @@ if (btnSaveUpdate) {
 // 4. Excluir Tarefa
 // (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
 
+window.renderRankingRow = function (item, index, color) {
+    const name = item.atendente || item.imovel || 'Desconhecido';
+    return `<div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+        <span><strong>#${index + 1}</strong> ${name}</span>
+        <span class="label" style="background:${color}">${item.total}</span>
+    </div>`;
+};
+
+window.openRankingModal = function (title, items, color) {
+    const modal = document.getElementById('modalOverlay');
+    if (!modal) return;
+
+    let rowsHtml = '';
+    items.forEach((item, i) => {
+        rowsHtml += window.renderRankingRow(item, i, color);
+    });
+
+    const existing = document.getElementById('rankingModal');
+    if (existing) existing.remove();
+
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'rankingModal';
+    modalDiv.className = 'modal';
+    modalDiv.style.cssText = 'max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;';
+    modalDiv.innerHTML = `
+        <div class="modal-header">
+            <h3>${title} (${items.length})</h3>
+            <button class="close-modal icon-btn" onclick="document.getElementById('rankingModal').remove(); document.getElementById('modalOverlay').classList.add('hidden');">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; flex: 1; max-height: 60vh;">
+            ${rowsHtml}
+        </div>
+    `;
+    modal.appendChild(modalDiv);
+    modal.classList.remove('hidden');
+};
+
 window.loadRelatorios = async function () {
     const container = document.getElementById('reportsContainer');
     if (!container) return;
@@ -1984,6 +2021,7 @@ window.loadRelatorios = async function () {
         if (data.success) {
             const total = data.data.total_atendimentos || 0;
             const atendentes = data.data.ranking_atendentes || [];
+            const atendentesAll = data.data.ranking_atendentes_all || [];
             const imoveis = data.data.ranking_imoveis || [];
 
             let atendentesHtml = '';
@@ -1991,12 +2029,7 @@ window.loadRelatorios = async function () {
                 atendentesHtml = '<p class="text-muted">Nenhum dado.</p>';
             } else {
                 atendentes.forEach((a, i) => {
-                    atendentesHtml += `
-                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-                                <span><strong>#${i + 1}</strong> ${a.atendente || 'Desconhecido'}</span>
-                                <span class="label" style="background:var(--primary)">${a.total}</span>
-                            </div>
-                        `;
+                    atendentesHtml += window.renderRankingRow(a, i, 'var(--primary)');
                 });
             }
 
@@ -2005,14 +2038,13 @@ window.loadRelatorios = async function () {
                 imoveisHtml = '<p class="text-muted">Nenhum dado.</p>';
             } else {
                 imoveis.forEach((im, i) => {
-                    imoveisHtml += `
-                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-                                <span><strong>#${i + 1}</strong> ${im.imovel || 'Sem nome'}</span>
-                                <span class="label" style="background:var(--secondary)">${im.total}</span>
-                            </div>
-                        `;
+                    imoveisHtml += window.renderRankingRow(im, i, 'var(--secondary)');
                 });
             }
+
+            const verTodosBtn = atendentesAll.length > 5
+                ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Atendentes', window._allAtendentes, 'var(--primary)')">Ver todos (${atendentesAll.length})</button>`
+                : '';
 
             container.innerHTML = `
                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
@@ -2025,6 +2057,7 @@ window.loadRelatorios = async function () {
                         <div class="card" style="padding: 20px;">
                             <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Atendentes</h4>
                             ${atendentesHtml}
+                            ${verTodosBtn}
                         </div>
                         
                         <div class="card" style="padding: 20px;">
@@ -2034,6 +2067,8 @@ window.loadRelatorios = async function () {
                         
                     </div>
                 `;
+
+            window._allAtendentes = atendentesAll;
         } else {
             container.innerHTML = '<p style="text-align:center; color:red;">' + (data.error || 'Erro ao carregar') + '</p>';
         }
