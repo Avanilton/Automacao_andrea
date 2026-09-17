@@ -10,14 +10,44 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'list') {
     $pdo = getConnection();
-    // Listar tarefas não excluídas (suporta MySQL Strict mode ou zero-dates de imports cPanel)
-    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00' ORDER BY created_at DESC");
+    // Paginação: carrega de 50 em 50 (evita despejar 1000+ tarefas de uma vez)
+    // Aceita `limit`+`offset` ou `page`+`limit` (page começa em 1)
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+    $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+    if (isset($_GET['page'])) {
+        $page = max(1, (int)$_GET['page']);
+        $offset = ($page - 1) * $limit;
+    }
+    if ($limit < 1) $limit = 50;
+    if ($limit > 200) $limit = 200;
+    if ($offset < 0) $offset = 0;
+    $search = trim($_GET['search'] ?? '');
+    $baseWhere = "WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00'";
+    $params = [];
+    if ($search !== '') {
+        $baseWhere .= " AND (property_name LIKE ? OR client_name LIKE ? OR client_code LIKE ?)";
+        $like = '%' . $search . '%';
+        $params = [$like, $like, $like];
+    }
+    // Total (mesmo filtro) para o frontend saber se há mais
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM tasks $baseWhere");
+    $stmtCount->execute($params);
+    $total = (int)$stmtCount->fetchColumn();
+    // Página atual
+    $stmt = $pdo->prepare("SELECT * FROM tasks $baseWhere ORDER BY created_at DESC LIMIT $limit OFFSET $offset");
+    $stmt->execute($params);
     $tasks = $stmt->fetchAll();
-    
-    // Buscar compartilhamentos
-    $stmtShares = $pdo->query("SELECT task_id, user_id FROM task_shares");
-    $shares = $stmtShares->fetchAll();
-    
+
+    // Buscar compartilhamentos SOMENTE das tarefas retornadas (evita scan cheio)
+    $shares = [];
+    $taskIds = array_column($tasks, 'id');
+    if (!empty($taskIds)) {
+        $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
+        $stmtShares = $pdo->prepare("SELECT task_id, user_id FROM task_shares WHERE task_id IN ($placeholders)");
+        $stmtShares->execute($taskIds);
+        $shares = $stmtShares->fetchAll();
+    }
+
     // Mapear compartilhamentos para as tarefas
     foreach ($tasks as &$task) {
         $task['shared_with'] = [];
@@ -32,8 +62,26 @@ if ($action === 'list') {
         $task['client'] = $task['client_name'];
         $task['type'] = 'Cobrança'; // mock fallback
     }
-    
-    jsonResponse(['success' => true, 'tasks' => $tasks]);
+
+    jsonResponse(['success' => true, 'tasks' => $tasks, 'total' => $total, 'limit' => $limit, 'offset' => $offset, 'hasMore' => ($offset + count($tasks)) < $total]);
+}
+
+if ($action === 'get') {
+    $pdo = getConnection();
+    $task_id = $_GET['id'] ?? 0;
+    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE id = ?");
+    $stmt->execute([$task_id]);
+    $task = $stmt->fetch();
+    if (!$task) {
+        jsonResponse(['error' => 'Tarefa não encontrada.'], 404);
+    }
+    $stmtShares = $pdo->prepare("SELECT user_id FROM task_shares WHERE task_id = ?");
+    $stmtShares->execute([$task_id]);
+    $task['shared_with'] = array_map('strval', $stmtShares->fetchAll(PDO::FETCH_COLUMN));
+    $task['name'] = $task['property_name'];
+    $task['client'] = $task['client_name'];
+    $task['type'] = 'Cobrança';
+    jsonResponse(['success' => true, 'task' => $task]);
 }
 
 if ($action === 'list_trash') {

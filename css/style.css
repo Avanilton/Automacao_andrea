@@ -1183,3 +1183,18 @@ html[data-theme='dark'] .logo-dark {
     background-color: rgba(139, 110, 47, 0.25);
     color: var(--text-main);
 }
+
+/* Relatórios — atualização suave */
+#reportsContainer { transition: opacity 0.35s ease; }
+#reportsContainer.reports-refreshing { opacity: 0.55; pointer-events: none; }
+.reports-grid { animation: fadeIn 0.45s ease; }
+.reports-skeleton .skel {
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--bg-surface-hover) 25%, var(--border) 50%, var(--bg-surface-hover) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.btn-loading { opacity: 0.75; pointer-events: none; }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

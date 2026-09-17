@@ -20,6 +20,7 @@
 11. [Lixeira (Restaurar/Excluir)](#11-lixeira-restaurarexcluir)
 12. [Configurações e Perfil](#12-configurações-e-perfil)
 13. [Integração Condado (Sync)](#13-integração-condado-sync)
+14. [Desenvolvimento](#14-desenvolvimento)
 
 ---
 
@@ -624,3 +625,169 @@ index.html
               └── Ajuda
                     └── Abrir Chamado
 ```
+
+---
+
+## 14. Desenvolvimento
+
+**Objetivo:** Documentar a sequência de desenvolvimento, desde a edição do código até o deploy em produção.
+
+### Ferramentas Utilizadas
+
+| Ferramenta | Uso |
+|------------|-----|
+| **VS Code** | Editor de código principal |
+| **Git** | Controle de versão |
+| **GitHub** | Repositório remoto (backup e colaboração) |
+| **XAMPP** | Servidor local (Apache + MySQL) |
+| **VS Code SFTP Extension** | Upload automático para produção |
+| **GitHub Actions** | Deploy automático via FTP |
+
+### Sequência de Desenvolvimento
+
+```
+1. Abrir VS Code
+       ↓
+2. Editar os arquivos
+       ↓
+3. Salvar (Ctrl+S)
+       ↓
+4. Testar no navegador local
+   http://localhost/Automacao_andrea-main/login.html
+       ↓
+5. Verificar se está funcionando
+       ↓
+6. Abrir terminal no VS Code (Ctrl+`)
+       ↓
+7. Verificar o que mudou
+   git status
+       ↓
+8. Adicionar arquivos ao staging
+   git add arquivo1.php arquivo2.js
+       ↓
+9. Criar commit com mensagem descritiva
+   git commit -m "feat: descricao da alteracao"
+       ↓
+10. Enviar para o GitHub
+    git push origin versoes
+       ↓
+11. (Opcional) Deploy para produção
+```
+
+### Estratégia de Branches
+
+```
+avanilton/main (repositório original)
+      ↓ (fork)
+origin/modificados (branch principal do fork)
+      ↓
+origin/versoes (branch de trabalho e versões)
+      ↓
+fix/* (branches de correção temporárias)
+```
+
+| Branch | Uso |
+|--------|-----|
+| `versoes` | Branch principal de trabalho — todas as alterações vão aqui |
+| `fix/*` | Branches temporárias para correções específicas |
+| `main` (avanilton) | Repositório original (upstream) |
+
+### Convenção de Commits
+
+| Prefixo | Uso | Exemplo |
+|---------|-----|---------|
+| `feat:` | Nova funcionalidade | `feat: Paginacao de tarefas com botao Carregar Mais` |
+| `fix:` | Correção de bug | `fix: Permissoes nao aplicadas na sidebar` |
+| `docs:` | Documentação | `docs: Guia de uso para usuario final` |
+| `chore:` | Manutenção | `chore: gitignore atualizado` |
+| `Fix:` | Correção (alternativo) | `Fix: task_id dinamico ao salvar atendimento` |
+
+### 2 Caminhos de Deploy
+
+#### Caminho 1: VS Code SFTP (Upload Automático)
+
+```
+Editar arquivo → Salvar → VS Code SFTP envia para FTP → Produção atualizada
+```
+
+- **Configuração:** `.vscode/sftp.json`
+- **Como funciona:** A extensão SFTP do VS Code detecta quando você salva um arquivo e faz upload automático para o servidor
+- **Quando usar:** Para correções rápidas e alterações pequenas
+- **Atenção:** Não passa pelo Git — não fica registrado no histórico
+
+#### Caminho 2: GitHub Actions (Deploy Automático)
+
+```
+Commit → Push para main → GitHub Actions dispara → FTP-Deploy envia para cPanel → Produção atualizada
+```
+
+- **Configuração:** `.github/workflows/deploy.yml`
+- **Como funciona:** Ao fazer push para a branch `main`, o GitHub Actions executa um workflow que envia todos os arquivos via FTP
+- **Quando usar:** Para versões completas e alterações maiores
+- **Vantagem:** Fica registrado no Git — pode voltar atrás se der problema
+
+### Checklist Antes de Commitar
+
+Antes de criar um commit, verifique:
+
+- [ ] **Testou no navegador local?** — Acesse `http://localhost/Automacao_andrea-main/login.html`
+- [ ] **Não quebrou nada?** — Teste as funcionalidades principais
+- [ ] **Não tem erros no console?** — Abra o console do navegador (F12) e veja se tem erros vermelhos
+- [ ] **PHP está funcionando?** — Teste as APIs no navegador ou Postman
+- [ ] **Não subiu dados sensíveis?** — Verifique se não tem senhas ou chaves no código
+- [ ] **Mensagem do commit está clara?** — Use o padrão `feat:`, `fix:`, `docs:`
+
+### Comandos Úteis do Git
+
+| Comando | O que faz |
+|---------|-----------|
+| `git status` | Mostra o que foi alterado |
+| `git diff` | Mostra as diferenças linha por linha |
+| `git log --oneline -5` | Mostra os últimos 5 commits |
+| `git add .` | Adiciona todas as alterações |
+| `git add arquivo.js` | Adiciona um arquivo específico |
+| `git commit -m "msg"` | Cria um commit |
+| `git push origin versoes` | Envia para o GitHub |
+| `git stash` | Esconde alterações temporariamente |
+| `git stash pop` | Recupera alterações escondidas |
+| `git checkout -b nova-branch` | Cria e muda para uma nova branch |
+
+### Deploy para Produção (Passo a Passo)
+
+#### Via Git (Recomendado)
+
+```bash
+# 1. Verificar o que mudou
+git status
+
+# 2. Adicionar arquivos
+git add api/reports.php js/app.js
+
+# 3. Criar commit
+git commit -m "feat: Nova funcionalidade X"
+
+# 4. Enviar para GitHub
+git push origin versoes
+
+# 5. (Se necessário) Forçar deploy no Avanilton
+git push avanilton versoes:main --force
+```
+
+#### Via ZIP (Quando não tem acesso ao Git)
+
+1. Selecione os arquivos alterados
+2. Compacte em um `.zip`
+3. Envie para o superior
+4. O superior sobe pelo cPanel File Manager ou FTP
+
+### Credenciais e Segurança
+
+| Serviço | Local da configuração | Observação |
+|---------|----------------------|------------|
+| **FTP Produção** | `.vscode/sftp.json` | Usado pelo VS Code SFTP Extension |
+| **FTP Produção** | `.github/workflows/deploy.yml` | Usado pelo GitHub Actions (via Secrets) |
+| **Banco Local** | `api/config.php` | Usado pelo sistema em produção |
+| **Banco Externo** | `api/config.php` | Conexão com o Condado |
+
+> **Recomendação:** Não commitar credenciais no Git. Usar variáveis de ambiente ou GitHub Secrets sempre que possível.
+

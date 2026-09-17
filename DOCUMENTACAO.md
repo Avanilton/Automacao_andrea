@@ -1,6 +1,6 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.0.12  
+**Versão:** 1.1.0  
 **Última atualização:** 17/09/2026
 
 ---
@@ -81,7 +81,7 @@ Dashboard principal e mais importante do sistema. É uma **SPA (Single Page Appl
 - **Sidebar** com navegação (Tarefas, Kanban, Relatórios, Configurações, Ajuda)
 - **Área principal** onde as views são renderizadas
 - **Modais** para criação de tarefas, distribuição, detalhes, etc.
-- **Versão do sistema** exibida no rodapé da sidebar (v1.0.12)
+- **Versão do sistema** exibida no rodapé da sidebar (v1.1.0)
 
 ---
 
@@ -121,15 +121,15 @@ Arquivo principal da aplicação (2441 linhas). Contém toda a lógica do fronte
 - `loadPermissions()` / `savePermissions()` — gerencia checkboxes de permissão
 
 **Tarefas:**
-- `loadTarefas(page)` — carrega tarefas com paginação (50 por página)
+- `loadTarefas(reset)` — carrega tarefas com paginação (50 por página)
 - `loadMoreTarefas()` — botão "Carregar Mais"
-- `renderTarefasRows()` — renderiza linhas da tabela
+- `buildTarefaRowHtml()` / `updateTarefasFooter()` — renderiza linhas da tabela
 - `openTaskDetails()` — abre modal com detalhes da tarefa
 - `deleteServerTask()` — move tarefa para lixeira
 
 **Kanban:**
 - `loadKanbanCards()` — carrega cards progressivamente
-- `injectKanbanCards()` — injeta cards nas colunas
+- `renderKanbanColumn()` / `loadMoreKanbanColumn()` (botao unico "Carregar mais") — injeta cards nas colunas
 - `dragCard()` / `dropCard()` — drag and drop de cards
 - `promptAddColumn()` — adiciona colunas personalizadas
 
@@ -204,7 +204,8 @@ API de tarefas (254 linhas):
 
 | Ação | Método | Descrição |
 |------|--------|-----------|
-| `?action=list` | GET | Lista tarefas com paginação (`page`, `limit`) |
+| `?action=list` | GET | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
+| `?action=get` | GET | Busca uma tarefa por ID (usado ao abrir detalhe fora da pagina) |
 | `?action=create` | POST | Cria tarefas em lote |
 | `?action=update_status` | POST | Atualiza status (todo/in_progress/done) |
 | `?action=soft_delete` | POST | Move tarefa para lixeira |
@@ -410,6 +411,7 @@ Schema do banco `bvgarantia_cobrancatask`:
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.1.0 | 17/09/2026 | Paginacao real 50/50 (limit/offset/search + total/hasMore), kanban progressivo com botao unico Carregar mais, refresh suave de relatorios (skeleton + fade + count-up) |
 | 1.0.12 | 17/09/2026 | Ranking Top 5 com modal, versão no rodapé da sidebar |
 | 1.0.11 | 16/09/2026 | Paginação de tarefas (50/página), carregamento progressivo Kanban |
 | 1.0.10 | 16/09/2026 | Sistema de permissões aplicado na interface |

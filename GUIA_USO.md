@@ -1,6 +1,6 @@
 # Guia de Uso - Cobrança Task
 
-**Versão:** 1.0.12
+**Versão:** 1.1.0
 
 ---
 
@@ -81,6 +81,7 @@ O Kanban é uma forma visual de organizar suas tarefas por status.
 #### Ver o quadro
 
 - Clique em **Kanban** no menu lateral
+- Cada coluna mostra os primeiros cards; use **Carregar mais** no rodape da coluna para ver mais (o quadro nao carrega tudo de uma vez)
 - Você verá 3 colunas:
   - **A Fazer** — tarefas novas
   - **Atendendo** — tarefas em andamento
@@ -250,6 +251,8 @@ Para ver o ranking completo:
 1. Clique em **Ver todos** abaixo do ranking
 2. Uma janela abre com a lista completa
 3. Clique em **X** para fechar
+
+Para atualizar os numeros, clique em **Atualizar Dados**: os cards mantem os dados anteriores visiveis com um efeito suave enquanto os novos carregam.
 
 ---
 

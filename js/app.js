@@ -116,7 +116,7 @@ const views = {
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <div class="search-container">
                             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input type="search" id="searchTarefas" class="search-input" placeholder="Pesquisar registros..." onkeyup="if(typeof filterTarefas === 'function') filterTarefas()">
+                            <input type="search" id="searchTarefas" class="search-input" placeholder="Pesquisar registros..." oninput="if(typeof onTarefasSearch === 'function') onTarefasSearch(this.value)">
                         </div>
                         <input type="file" id="importTasksInput" accept=".xls,.xlsx" style="display:none">
                         <button class="btn-secondary" id="btnImportTasks" style="display: ${user && user.role === 'admin' ? 'block' : 'none'}">Importar Planilha</button>
@@ -143,6 +143,10 @@ const views = {
                             </tr>
                         </tbody>
                     </table>
+                    <div id="tarefasFooter" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0.9rem 1rem; border-top:1px solid var(--border);">
+                        <span id="tarefasCounter" style="font-size:0.85rem; color:var(--text-muted);">Carregando...</span>
+                        <button class="btn-secondary" id="btnLoadMoreTarefas" onclick="if(typeof loadMoreTarefas === 'function') loadMoreTarefas()">Carregar mais (50)</button>
+                    </div>
                 </div>
             </div>
         `,
@@ -1204,9 +1208,10 @@ window.updateKanbanCounters = function () {
         const colElement = document.getElementById('col-' + col.status_key);
         if (colElement) {
             const cardsCount = colElement.querySelectorAll('.kanban-card').length;
+            const total = (window._kanbanGrouped && window._kanbanGrouped[col.status_key]) ? window._kanbanGrouped[col.status_key].length : cardsCount;
             const badge = document.getElementById('badge-' + col.status_key);
             if (badge) {
-                badge.innerText = cardsCount;
+                badge.innerText = total > cardsCount ? `${cardsCount}/${total}` : cardsCount;
             }
         }
     });
@@ -1254,39 +1259,72 @@ window.dropCard = async function (ev) {
 }
 
 window.currentLoadedTasks = [];
+window.tasksPagination = { limit: 50, offset: 0, total: 0, hasMore: true, loading: false, search: '' };
+window._tarefasSearchTimer = null;
 
-window.loadTarefas = async function () {
+function updateTarefasFooter() {
+    const counter = document.getElementById('tarefasCounter');
+    const btn = document.getElementById('btnLoadMoreTarefas');
+    const shown = window.currentLoadedTasks.length;
+    const total = window.tasksPagination.total || shown;
+    if (counter) counter.textContent = total > 0 ? `Exibindo ${shown} de ${total}` : 'Nenhuma tarefa encontrada.';
+    if (btn) {
+        btn.style.display = window.tasksPagination.hasMore ? '' : 'none';
+        btn.disabled = !!window.tasksPagination.loading;
+        btn.textContent = window.tasksPagination.loading ? 'Carregando...' : `Carregar mais (${window.tasksPagination.limit})`;
+    }
+}
+
+window.loadMoreTarefas = async function () {
+    if (!window.tasksPagination.hasMore || window.tasksPagination.loading) return;
+    await window.loadTarefas(false);
+    window._kanbanDirty = true;
+};
+
+window.loadTarefas = async function (reset = true) {
     const tbody = document.getElementById('tarefasList');
     if (!tbody) return;
+    if (window.tasksPagination.loading) return;
+    if (reset) {
+        window.tasksPagination.offset = 0;
+        window.tasksPagination.hasMore = true;
+        window.currentLoadedTasks = [];
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Carregando tarefas...</td></tr>';
+    }
+    window.tasksPagination.loading = true;
+    updateTarefasFooter();
 
     try {
-        const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-        const text = await res.text();
-
-        try {
-            const data = JSON.parse(text);
-            if (data && data.success) {
-                window.currentLoadedTasks = data.tasks;
-            } else {
-                console.error("API falhou ou não retornou success", data);
-                if (data && data.error) {
-                    alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
-                }
-window.currentLoadedTasks = [];
-window.currentOpenTaskId = null;
+        const p = window.tasksPagination;
+        const qs = `api/tasks.php?action=list&limit=${p.limit}&offset=${p.offset}&search=${encodeURIComponent(p.search)}&_t=` + new Date().getTime();
+        const res = await fetch(qs);
+        const data = await res.json();
+        if (data && data.success) {
+            const page = data.tasks || [];
+            window.currentLoadedTasks = reset ? page : window.currentLoadedTasks.concat(page);
+            window.tasksPagination.total = data.total ?? window.currentLoadedTasks.length;
+            window.tasksPagination.hasMore = !!data.hasMore;
+            window.tasksPagination.offset = (data.offset ?? p.offset) + page.length;
+        } else {
+            console.error("API falhou ou não retornou success", data);
+            if (data && data.error) {
+                alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
             }
-        } catch (jsonErr) {
-            console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
-            alert("Erro ao carregar tarefas. Resposta do servidor não é JSON válido: " + text.substring(0, 150));
-            window.currentLoadedTasks = [];
+            if (reset) {
+                window.currentLoadedTasks = [];
+                window.currentOpenTaskId = null;
+            }
         }
     } catch (e) {
         console.error("Erro no fetch de loadTarefas", e);
-        window.currentLoadedTasks = [];
+        if (reset) window.currentLoadedTasks = [];
+    } finally {
+        window.tasksPagination.loading = false;
     }
 
     if (window.currentLoadedTasks.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma tarefa encontrada.</td></tr>';
+        updateTarefasFooter();
         return;
     }
 
@@ -1330,19 +1368,21 @@ window.currentOpenTaskId = null;
     }
 
     tbody.innerHTML = html;
+    updateTarefasFooter();
+    window._kanbanDirty = true;
 }
 
+window.onTarefasSearch = function (value) {
+    clearTimeout(window._tarefasSearchTimer);
+    window._tarefasSearchTimer = setTimeout(() => {
+        window.tasksPagination.search = (value || '').trim();
+        window.loadTarefas(true);
+    }, 350);
+};
+
 window.filterTarefas = function() {
-    const term = document.getElementById('searchTarefas') ? document.getElementById('searchTarefas').value.toLowerCase() : '';
-    const rows = document.querySelectorAll('#tarefasList tr');
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        if (text.includes(term)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
+    const el = document.getElementById('searchTarefas');
+    window.onTarefasSearch(el ? el.value : '');
 }
 
 window.filterKanban = function() {
@@ -1397,7 +1437,51 @@ var localColumns = [
     { title: 'Finalizado', status_key: 'done' }
 ];
 
-window.loadKanbanCards = async function () {
+window.KANBAN_STEP = 30;
+window.kanbanLimits = {};
+window._kanbanGrouped = {};
+window._kanbanDirty = true;
+
+window.loadMoreKanbanColumn = async function (statusKey, btn) {
+    const all = window._kanbanGrouped[statusKey] || [];
+    const limit = window.kanbanLimits[statusKey] || window.KANBAN_STEP;
+    if (all.length > limit) {
+        window.kanbanLimits[statusKey] = limit + window.KANBAN_STEP;
+        renderKanbanColumn(statusKey);
+    } else if (window.tasksPagination && window.tasksPagination.hasMore) {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Carregando...';
+        }
+        await window.loadMoreTarefas();
+        await window.loadKanbanCards(true);
+    }
+};
+
+function renderKanbanColumn(statusKey) {
+    const all = window._kanbanGrouped[statusKey] || [];
+    const limit = window.kanbanLimits[statusKey] || window.KANBAN_STEP;
+    const visible = all.slice(0, limit);
+    const remaining = all.length - visible.length;
+    const colEl = document.querySelector(`#col-${statusKey} .column-cards`);
+    if (!colEl) return;
+    colEl.innerHTML = visible.join('');
+    const oldMore = document.querySelector(`#morediv-${statusKey}`);
+    if (oldMore) oldMore.remove();
+    const colDiv = document.getElementById('col-' + statusKey);
+    if (!colDiv) return;
+    const hasMoreServer = window.tasksPagination && window.tasksPagination.hasMore;
+    if (remaining > 0 || hasMoreServer) {
+        const moreDiv = document.createElement('div');
+        moreDiv.id = 'morediv-' + statusKey;
+        moreDiv.style.cssText = 'padding:0.5rem;';
+        moreDiv.innerHTML = `<button class="btn-secondary btn-sm" style="width:100%;" onclick="loadMoreKanbanColumn('${statusKey}', this)">Carregar mais</button>`;
+        colDiv.appendChild(moreDiv);
+    }
+    updateKanbanCounters();
+}
+
+window.loadKanbanCards = async function (forceReload = false) {
     const board = document.getElementById('kanbanBoard');
     if (!board) return;
 
@@ -1421,30 +1505,28 @@ window.loadKanbanCards = async function () {
                     </button>
                 </div>
                 <div class="column-cards" ondragover="event.preventDefault()" ondrop="dropCard(event)">
+                    <p style="text-align:center; color:var(--text-muted); font-size:0.85rem;">Carregando...</p>
                 </div>
             `;
         board.appendChild(colDiv);
     });
 
-    // Reusa dados já carregados, busca na API apenas se vazio
-    if (!window.currentLoadedTasks || window.currentLoadedTasks.length === 0) {
-        try {
-            const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-            const text = await res.text();
+    // Garante ao menos a primeira página (50) sem despejar tudo de uma vez
+    if ((!window.currentLoadedTasks || window.currentLoadedTasks.length === 0) || forceReload || window._kanbanDirty) {
+        window._kanbanDirty = false;
+        if (!window.currentLoadedTasks || window.currentLoadedTasks.length === 0) {
             try {
-                const data = JSON.parse(text);
+                const res = await fetch('api/tasks.php?action=list&limit=50&offset=0&_t=' + new Date().getTime());
+                const data = await res.json();
                 if (data && data.success) {
-                    window.currentLoadedTasks = data.tasks;
-                } else {
-                    if (data && data.error) {
-                        alert("Erro no servidor (Kanban): " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
-                    }
+                    window.currentLoadedTasks = data.tasks || [];
+                    window.tasksPagination.total = data.total ?? window.currentLoadedTasks.length;
+                    window.tasksPagination.hasMore = !!data.hasMore;
+                    window.tasksPagination.offset = (data.offset ?? 0) + (data.tasks || []).length;
                 }
             } catch (e) {
-                console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);
+                console.error("Erro no fetch de Kanban", e);
             }
-        } catch (e) {
-            console.error("Erro no fetch de Kanban", e);
         }
     }
 
@@ -1487,15 +1569,16 @@ window.loadKanbanCards = async function () {
         }
     }
 
-    // Injeta HTML de uma vez por coluna (evita innerHTML +=)
+    // Agrupa por coluna, mas renderiza progressivo (30 por coluna + Carregar mais)
+    window._kanbanGrouped = {};
+    localColumns.forEach(col => {
+        window._kanbanGrouped[col.status_key] = [];
+        if (!window.kanbanLimits[col.status_key]) window.kanbanLimits[col.status_key] = window.KANBAN_STEP;
+    });
     for (const key in colCards) {
-        if (colCards[key].length > 0) {
-            const el = document.querySelector(`#col-${key} .column-cards`);
-            if (el) el.innerHTML = colCards[key].join('');
-        }
+        window._kanbanGrouped[key] = colCards[key];
     }
-
-    updateKanbanCounters();
+    Object.keys(window._kanbanGrouped).forEach(renderKanbanColumn);
 }
 
 window.promptAddColumn = function () {
@@ -1511,11 +1594,27 @@ window.promptAddColumn = function () {
     loadKanbanCards();
 }
 
-window.openTaskDetails = function (taskId) {
+window.openTaskDetails = async function (taskId) {
     window.currentOpenTaskId = taskId;
     let savedTasks = window.currentLoadedTasks || [];
     let t = savedTasks.find(task => task.id == taskId);
-    if (!t) return;
+    if (!t) {
+        try {
+            const res = await fetch(`api/tasks.php?action=get&id=${taskId}&_t=` + new Date().getTime());
+            const data = await res.json();
+            if (data && data.success && data.task) {
+                t = data.task;
+                window.currentLoadedTasks.push(t);
+            } else {
+                showToast('Tarefa não encontrada (pode estar fora da página carregada).', 'error');
+                return;
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Erro ao buscar tarefa.', 'error');
+            return;
+        }
+    }
 
     let localUsers = window.currentLoadedUsers || [];
     let assignedUser = localUsers.find(u => u.id == t.assigned_to);
@@ -2012,8 +2111,27 @@ window.openRankingModal = function (title, items, color) {
 window.loadRelatorios = async function () {
     const container = document.getElementById('reportsContainer');
     if (!container) return;
+    if (window._reportsLoading) return;
+    window._reportsLoading = true;
 
-    container.innerHTML = '<p style="text-align:center;">Carregando...</p>';
+    const refreshBtn = document.querySelector('[onclick*="loadRelatorios"]');
+    const originalBtnHtml = refreshBtn ? refreshBtn.innerHTML : '';
+    if (refreshBtn) {
+        refreshBtn.classList.add('btn-loading');
+        refreshBtn.innerHTML = '<span class="spin">↻</span> Atualizando...';
+    }
+
+    const isFirstLoad = !container.dataset.loaded;
+    if (isFirstLoad) {
+        container.innerHTML = `
+            <div class="reports-skeleton" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="card" style="padding: 20px;"><div class="skel" style="height: 22px; width: 60%; margin-bottom: 14px;"></div><div class="skel" style="height: 56px; width: 40%; margin: 0 auto;"></div></div>
+                <div class="card" style="padding: 20px;"><div class="skel" style="height: 22px; width: 70%; margin-bottom: 14px;"></div><div class="skel" style="height: 16px; margin-bottom: 10px;"></div><div class="skel" style="height: 16px; margin-bottom: 10px;"></div><div class="skel" style="height: 16px; width: 80%;"></div></div>
+                <div class="card" style="padding: 20px;"><div class="skel" style="height: 22px; width: 60%; margin-bottom: 14px;"></div><div class="skel" style="height: 16px; margin-bottom: 10px;"></div><div class="skel" style="height: 16px; width: 85%;"></div></div>
+            </div>`;
+    } else {
+        container.classList.add('reports-refreshing');
+    }
     try {
         const res = await fetch('api/reports.php');
         const data = await res.json();
@@ -2047,11 +2165,11 @@ window.loadRelatorios = async function () {
                 : '';
 
             container.innerHTML = `
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="reports-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                         
                         <div class="card" style="padding: 20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
                             <h4 style="color:var(--text-muted); margin-bottom:10px;">Total de Atendimentos</h4>
-                            <h1 style="font-size: 3rem; color:var(--primary); margin:0;">${total}</h1>
+                            <h1 id="reportsTotal" style="font-size: 3rem; color:var(--primary); margin:0;">${total}</h1>
                         </div>
                         
                         <div class="card" style="padding: 20px;">
@@ -2069,14 +2187,54 @@ window.loadRelatorios = async function () {
                 `;
 
             window._allAtendentes = atendentesAll;
+            container.dataset.loaded = '1';
+            container.classList.remove('reports-refreshing');
+            animateReportsTotal(total);
         } else {
-            container.innerHTML = '<p style="text-align:center; color:red;">' + (data.error || 'Erro ao carregar') + '</p>';
+            container.classList.remove('reports-refreshing');
+            if (isFirstLoad) {
+                container.innerHTML = '<p style="text-align:center; color:red;">' + (data.error || 'Erro ao carregar') + '</p>';
+            } else if (typeof showToast === 'function') {
+                showToast(data.error || 'Erro ao atualizar relatórios.', 'error');
+            }
         }
     } catch (e) {
         console.error(e);
-        container.innerHTML = '<p style="text-align:center; color:red;">Falha de comunicação.</p>';
+        container.classList.remove('reports-refreshing');
+        if (isFirstLoad) {
+            container.innerHTML = '<p style="text-align:center; color:red;">Falha de comunicação.</p>';
+        } else if (typeof showToast === 'function') {
+            showToast('Falha ao atualizar. Mantidos os dados anteriores.', 'error');
+        }
+    } finally {
+        window._reportsLoading = false;
+        if (refreshBtn) {
+            refreshBtn.classList.remove('btn-loading');
+            refreshBtn.innerHTML = originalBtnHtml;
+        }
     }
 };
+
+function animateReportsTotal(target) {
+    const el = document.getElementById('reportsTotal');
+    if (!el) return;
+    const prev = parseInt(el.dataset.value || '0', 10);
+    const next = parseInt(target, 10) || 0;
+    el.dataset.value = String(next);
+    if (prev === next || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.textContent = next;
+        return;
+    }
+    const start = performance.now();
+    const dur = 600;
+    const tick = (now) => {
+        const p = Math.min((now - start) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(prev + (next - prev) * eased);
+        if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
 
 // Default view (called at the end to ensure all functions are defined)
 
