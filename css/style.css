@@ -1183,3 +1183,26 @@ html[data-theme='dark'] .logo-dark {
     background-color: rgba(139, 110, 47, 0.25);
     color: var(--text-main);
 }
+
+/* Pagination */
+#tarefasPagination {
+    padding: 0.5rem 0;
+}
+
+#btnLoadMoreTarefas {
+    min-width: 160px;
+}
+
+#btnLoadMoreTarefas:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+#kanbanLoadProgress {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

@@ -51,7 +51,8 @@ try {
         'success' => true,
         'data' => [
             'total_atendimentos' => $totalAtendimentos,
-            'ranking_atendentes' => $rankingAtendentes,
+            'ranking_atendentes' => array_slice($rankingAtendentes, 0, 5),
+            'ranking_atendentes_all' => $rankingAtendentes,
             'ranking_imoveis' => $rankingImoveis
         ]
     ]);

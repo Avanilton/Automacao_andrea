@@ -144,12 +144,19 @@ const views = {
                         </tbody>
                     </table>
                 </div>
+                <div id="tarefasPagination" style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
+                    <span id="tarefasLoadInfo" style="color: var(--text-muted); font-size: 0.85rem;">Carregando...</span>
+                    <button class="btn-secondary" id="btnLoadMoreTarefas" style="display: none;" onclick="loadMoreTarefas()">Carregar Mais</button>
+                </div>
             </div>
         `,
     kanban: `
             <div class="view-section active" id="view-kanban">
                 <div class="flex-between" style="margin-bottom: 1rem;">
-                    <h3>Kanban</h3>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h3>Kanban</h3>
+                        <span id="kanbanLoadProgress" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+                    </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <div class="search-container">
                             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -1002,6 +1009,8 @@ closeBtns.forEach(btn => {
 function closeModals() {
     modalOverlay.classList.add('hidden');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+    const rankingModal = document.getElementById('rankingModal');
+    if (rankingModal) rankingModal.remove();
 }
 
 function openCreateTaskModal() {
@@ -1254,42 +1263,12 @@ window.dropCard = async function (ev) {
 }
 
 window.currentLoadedTasks = [];
+window.tarefasPagination = { page: 1, totalPages: 1, loading: false };
+window.kanbanPagination = { page: 1, totalPages: 1, loading: false, loaded: false };
 
-window.loadTarefas = async function () {
+window.renderTarefasRows = function (tasks) {
     const tbody = document.getElementById('tarefasList');
-    if (!tbody) return;
-
-    try {
-        const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
-        const text = await res.text();
-
-        try {
-            const data = JSON.parse(text);
-            if (data && data.success) {
-                window.currentLoadedTasks = data.tasks;
-            } else {
-                console.error("API falhou ou não retornou success", data);
-                if (data && data.error) {
-                    alert("Erro no servidor: " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
-                }
-window.currentLoadedTasks = [];
-window.currentOpenTaskId = null;
-            }
-        } catch (jsonErr) {
-            console.error("Erro ao fazer parse do JSON. Resposta bruta:", text);
-            alert("Erro ao carregar tarefas. Resposta do servidor não é JSON válido: " + text.substring(0, 150));
-            window.currentLoadedTasks = [];
-        }
-    } catch (e) {
-        console.error("Erro no fetch de loadTarefas", e);
-        window.currentLoadedTasks = [];
-    }
-
-    if (window.currentLoadedTasks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma tarefa encontrada.</td></tr>';
-        return;
-    }
-
+    if (!tbody) return '';
     const isAdmin = user && user.role === 'admin';
     const baseStyle = 'white-space: nowrap; font-size: 0.7rem; padding: 0.25rem 0.5rem; border-radius: 4px; color: white; display: inline-block; text-align: center;';
     const statusMap = {
@@ -1300,23 +1279,15 @@ window.currentOpenTaskId = null;
     };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     let html = '';
-    const fragment = window.currentLoadedTasks;
-    const len = fragment.length;
-
-    for (let i = 0; i < len; i++) {
-        const t = fragment[i];
+    for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
         if (!isAdmin && t.assigned_to != user.id && !(t.shared_with || []).includes(String(user.id))) continue;
-
         const assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
         let userName = assignedUser ? assignedUser.name : 'Não atribuído';
         if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
-
         const clientText = t.client ? `${t.client} <br><small style="color:var(--text-muted)">Atendente: ${userName}</small>` : userName;
-
         let delBtn = isAdmin ? `<button class="btn-secondary danger-text" onclick="deleteServerTask('${t.id}')">Excluir</button>` : '';
-
         let statusInfo = statusMap[t.status] || (t.status ? { label: t.status.charAt(0).toUpperCase() + t.status.slice(1), bg: 'var(--primary)' } : { label: 'A Fazer', bg: '#64748B' });
         let dueWarning = '';
         if (t.due_date && t.status !== 'done') {
@@ -1325,12 +1296,77 @@ window.currentOpenTaskId = null;
             if (diffDays === 1) dueWarning = '<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Vence amanhã">\u26A0\ufe0f Vence Amanhã</span>';
             else if (diffDays < 0) dueWarning = '<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">\u26A0\ufe0f Atrasado</span>';
         }
-
         html += `<tr><td>${t.name} ${dueWarning}</td><td>${clientText}</td><td>${t.created_at}</td><td><span class="label" style="${baseStyle} background: ${statusInfo.bg};">${statusInfo.label}</span></td><td><div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>${delBtn}</div></td></tr>`;
     }
+    return html;
+};
 
-    tbody.innerHTML = html;
-}
+window.updateLoadMoreButton = function () {
+    const btn = document.getElementById('btnLoadMoreTarefas');
+    const info = document.getElementById('tarefasLoadInfo');
+    if (!btn) return;
+    const p = window.tarefasPagination;
+    if (p.page < p.totalPages) {
+        btn.style.display = 'inline-block';
+        btn.disabled = false;
+        btn.textContent = 'Carregar Mais';
+        if (info) info.textContent = `Página ${p.page} de ${p.totalPages}`;
+    } else {
+        btn.style.display = 'none';
+        if (info && window.currentLoadedTasks.length > 0) info.textContent = `${window.currentLoadedTasks.length} tarefas carregadas`;
+    }
+};
+
+window.loadTarefas = async function (page) {
+    page = page || 1;
+    const tbody = document.getElementById('tarefasList');
+    if (!tbody) return;
+    if (window.tarefasPagination.loading) return;
+    window.tarefasPagination.loading = true;
+
+    if (page === 1) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando tarefas...</td></tr>';
+        window.currentLoadedTasks = [];
+    }
+
+    try {
+        const res = await fetch(`api/tasks.php?action=list&page=${page}&limit=50&_t=` + new Date().getTime());
+        const text = await res.text();
+        const data = JSON.parse(text);
+
+        if (data && data.success) {
+            if (page === 1) {
+                window.currentLoadedTasks = data.tasks;
+                tbody.innerHTML = window.renderTarefasRows(data.tasks);
+            } else {
+                window.currentLoadedTasks = window.currentLoadedTasks.concat(data.tasks);
+                const newHtml = window.renderTarefasRows(data.tasks);
+                tbody.insertAdjacentHTML('beforeend', newHtml);
+            }
+            window.tarefasPagination.page = data.page;
+            window.tarefasPagination.totalPages = data.totalPages;
+            window.updateLoadMoreButton();
+
+            if (page === 1 && window.currentLoadedTasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma tarefa encontrada.</td></tr>';
+            }
+        } else {
+            console.error("API falhou", data);
+            showToast("Erro no servidor: " + (data.error || 'Desconhecido'), 'error');
+        }
+    } catch (e) {
+        console.error("Erro no fetch de loadTarefas", e);
+        showToast("Erro ao carregar tarefas.", 'error');
+    } finally {
+        window.tarefasPagination.loading = false;
+    }
+};
+
+window.loadMoreTarefas = function () {
+    if (window.tarefasPagination.page < window.tarefasPagination.totalPages) {
+        window.loadTarefas(window.tarefasPagination.page + 1);
+    }
+};
 
 window.filterTarefas = function() {
     const term = document.getElementById('searchTarefas') ? document.getElementById('searchTarefas').value.toLowerCase() : '';
@@ -1397,19 +1433,55 @@ var localColumns = [
     { title: 'Finalizado', status_key: 'done' }
 ];
 
+window.renderKanbanCard = function (t, isAdmin, today) {
+    const assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
+    let userName = assignedUser ? assignedUser.name : 'Não atribuído';
+    if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
+    let status = t.status || 'todo';
+    let deleteBtn = isAdmin ? `<button class="icon-btn danger-text" style="position: absolute; top: 10px; right: 10px; padding: 2px; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteServerTask('${t.id}')">Excluir</button>` : '';
+    let dueWarning = '';
+    if (t.due_date && t.status !== 'done') {
+        const due = new Date(t.due_date + 'T00:00:00');
+        const diffDays = Math.ceil((due - today) / 86400000);
+        if (diffDays === 1) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Vence Amanhã</span></div>';
+        else if (diffDays < 0) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span></div>';
+    }
+    return `<div class="kanban-card" id="card-${t.id}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${t.id}')">${deleteBtn}<div class="card-labels"><span class="label" style="background: var(--primary)">${t.type}</span></div>${dueWarning}<div class="card-title" style="margin-top: 5px;">${t.name}</div><div class="card-client">${t.client || 'Sem cliente'}</div><div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);"><span>Atrib: ${userName}</span></div></div>`;
+};
+
+window.injectKanbanCards = function (tasks) {
+    const isAdmin = user && user.role === 'admin';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const colCards = {};
+    localColumns.forEach(col => { colCards[col.status_key] = []; });
+    for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        if (!isAdmin && t.assigned_to != user.id && !(t.shared_with || []).includes(String(user.id))) continue;
+        const status = t.status || 'todo';
+        const card = window.renderKanbanCard(t, isAdmin, today);
+        if (colCards[status]) colCards[status].push(card);
+        else if (colCards['todo']) colCards['todo'].push(card);
+    }
+    for (const key in colCards) {
+        if (colCards[key].length > 0) {
+            const el = document.querySelector(`#col-${key} .column-cards`);
+            if (el) el.insertAdjacentHTML('beforeend', colCards[key].join(''));
+        }
+    }
+    updateKanbanCounters();
+};
+
 window.loadKanbanCards = async function () {
     const board = document.getElementById('kanbanBoard');
     if (!board) return;
+    board.innerHTML = '';
 
-    board.innerHTML = ''; // clear
-
-    // Render local columns
     localColumns.forEach(col => {
         const colDiv = document.createElement('div');
         colDiv.className = 'kanban-column';
         colDiv.id = 'col-' + col.status_key;
         colDiv.setAttribute('data-status', col.status_key);
-
         colDiv.innerHTML = `
                 <div class="column-header">
                     <div>
@@ -1426,77 +1498,58 @@ window.loadKanbanCards = async function () {
         board.appendChild(colDiv);
     });
 
-    // Reusa dados já carregados, busca na API apenas se vazio
-    if (!window.currentLoadedTasks || window.currentLoadedTasks.length === 0) {
+    const progressEl = document.getElementById('kanbanLoadProgress');
+
+    if (window.currentLoadedTasks && window.currentLoadedTasks.length > 0 && window.kanbanPagination.loaded) {
+        window.injectKanbanCards(window.currentLoadedTasks);
+        if (progressEl) progressEl.textContent = '';
+        return;
+    }
+
+    window.currentLoadedTasks = [];
+    window.kanbanPagination = { page: 1, totalPages: 1, loading: false, loaded: false };
+
+    try {
+        const res = await fetch(`api/tasks.php?action=list&page=1&limit=50&_t=` + new Date().getTime());
+        const text = await res.text();
+        const data = JSON.parse(text);
+        if (data && data.success) {
+            window.currentLoadedTasks = data.tasks;
+            window.kanbanPagination.totalPages = data.totalPages;
+            window.injectKanbanCards(data.tasks);
+            if (progressEl) progressEl.textContent = data.total > 50 ? `${Math.min(50, data.total)}/${data.total}` : '';
+        }
+    } catch (e) {
+        console.error("Erro ao carregar Kanban", e);
+        return;
+    }
+
+    if (window.kanbanPagination.totalPages <= 1) {
+        window.kanbanPagination.loaded = true;
+        if (progressEl) progressEl.textContent = '';
+        return;
+    }
+
+    for (let page = 2; page <= window.kanbanPagination.totalPages; page++) {
+        await new Promise(r => setTimeout(r, 50));
         try {
-            const res = await fetch('api/tasks.php?action=list&_t=' + new Date().getTime());
+            const res = await fetch(`api/tasks.php?action=list&page=${page}&limit=50&_t=` + new Date().getTime());
             const text = await res.text();
-            try {
-                const data = JSON.parse(text);
-                if (data && data.success) {
-                    window.currentLoadedTasks = data.tasks;
-                } else {
-                    if (data && data.error) {
-                        alert("Erro no servidor (Kanban): " + data.error + (data.details ? "\nDetalhes: " + data.details : ""));
-                    }
-                }
-            } catch (e) {
-                console.error("Erro ao fazer parse do JSON no Kanban. Resposta bruta:", text);
+            const data = JSON.parse(text);
+            if (data && data.success) {
+                window.currentLoadedTasks = window.currentLoadedTasks.concat(data.tasks);
+                window.injectKanbanCards(data.tasks);
+                const loaded = Math.min(page * 50, data.total);
+                if (progressEl) progressEl.textContent = `${loaded}/${data.total}`;
             }
         } catch (e) {
-            console.error("Erro no fetch de Kanban", e);
+            console.error(`Erro ao carregar Kanban página ${page}`, e);
         }
     }
 
-    const savedTasks = window.currentLoadedTasks || [];
-    const isAdmin = user && user.role === 'admin';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Pré-agrupa cards por coluna para evitar querySelector repetido
-    const colCards = {};
-    localColumns.forEach(col => {
-        colCards[col.status_key] = [];
-    });
-
-    for (let i = 0; i < savedTasks.length; i++) {
-        const t = savedTasks[i];
-        if (!isAdmin && t.assigned_to != user.id && !(t.shared_with || []).includes(String(user.id))) continue;
-
-        const assignedUser = window.currentLoadedUsers ? window.currentLoadedUsers.find(u => u.id == t.assigned_to) : null;
-        let userName = assignedUser ? assignedUser.name : 'Não atribuído';
-        if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
-
-        let status = t.status || 'todo';
-        let deleteBtn = isAdmin ? `<button class="icon-btn danger-text" style="position: absolute; top: 10px; right: 10px; padding: 2px; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteServerTask('${t.id}')">Excluir</button>` : '';
-
-        let dueWarning = '';
-        if (t.due_date && t.status !== 'done') {
-            const due = new Date(t.due_date + 'T00:00:00');
-            const diffDays = Math.ceil((due - today) / 86400000);
-            if (diffDays === 1) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Vence Amanhã</span></div>';
-            else if (diffDays < 0) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span></div>';
-        }
-
-        const card = `<div class="kanban-card" id="card-${t.id}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${t.id}')">${deleteBtn}<div class="card-labels"><span class="label" style="background: var(--primary)">${t.type}</span></div>${dueWarning}<div class="card-title" style="margin-top: 5px;">${t.name}</div><div class="card-client">${t.client || 'Sem cliente'}</div><div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);"><span>Atrib: ${userName}</span></div></div>`;
-
-        if (colCards[status]) {
-            colCards[status].push(card);
-        } else {
-            if (colCards['todo']) colCards['todo'].push(card);
-        }
-    }
-
-    // Injeta HTML de uma vez por coluna (evita innerHTML +=)
-    for (const key in colCards) {
-        if (colCards[key].length > 0) {
-            const el = document.querySelector(`#col-${key} .column-cards`);
-            if (el) el.innerHTML = colCards[key].join('');
-        }
-    }
-
-    updateKanbanCounters();
-}
+    window.kanbanPagination.loaded = true;
+    if (progressEl) progressEl.textContent = '';
+};
 
 window.promptAddColumn = function () {
     const title = prompt('Digite o nome da nova coluna:');
@@ -1972,6 +2025,43 @@ if (btnSaveUpdate) {
 // 4. Excluir Tarefa
 // (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
 
+window.renderRankingRow = function (item, index, color) {
+    const name = item.atendente || item.imovel || 'Desconhecido';
+    return `<div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+        <span><strong>#${index + 1}</strong> ${name}</span>
+        <span class="label" style="background:${color}">${item.total}</span>
+    </div>`;
+};
+
+window.openRankingModal = function (title, items, color) {
+    const modal = document.getElementById('modalOverlay');
+    if (!modal) return;
+
+    let rowsHtml = '';
+    items.forEach((item, i) => {
+        rowsHtml += window.renderRankingRow(item, i, color);
+    });
+
+    const existing = document.getElementById('rankingModal');
+    if (existing) existing.remove();
+
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'rankingModal';
+    modalDiv.className = 'modal';
+    modalDiv.style.cssText = 'max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;';
+    modalDiv.innerHTML = `
+        <div class="modal-header">
+            <h3>${title} (${items.length})</h3>
+            <button class="close-modal icon-btn" onclick="document.getElementById('rankingModal').remove(); document.getElementById('modalOverlay').classList.add('hidden');">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; flex: 1; max-height: 60vh;">
+            ${rowsHtml}
+        </div>
+    `;
+    modal.appendChild(modalDiv);
+    modal.classList.remove('hidden');
+};
+
 window.loadRelatorios = async function () {
     const container = document.getElementById('reportsContainer');
     if (!container) return;
@@ -1984,6 +2074,7 @@ window.loadRelatorios = async function () {
         if (data.success) {
             const total = data.data.total_atendimentos || 0;
             const atendentes = data.data.ranking_atendentes || [];
+            const atendentesAll = data.data.ranking_atendentes_all || [];
             const imoveis = data.data.ranking_imoveis || [];
 
             let atendentesHtml = '';
@@ -1991,12 +2082,7 @@ window.loadRelatorios = async function () {
                 atendentesHtml = '<p class="text-muted">Nenhum dado.</p>';
             } else {
                 atendentes.forEach((a, i) => {
-                    atendentesHtml += `
-                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-                                <span><strong>#${i + 1}</strong> ${a.atendente || 'Desconhecido'}</span>
-                                <span class="label" style="background:var(--primary)">${a.total}</span>
-                            </div>
-                        `;
+                    atendentesHtml += window.renderRankingRow(a, i, 'var(--primary)');
                 });
             }
 
@@ -2005,14 +2091,13 @@ window.loadRelatorios = async function () {
                 imoveisHtml = '<p class="text-muted">Nenhum dado.</p>';
             } else {
                 imoveis.forEach((im, i) => {
-                    imoveisHtml += `
-                            <div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-                                <span><strong>#${i + 1}</strong> ${im.imovel || 'Sem nome'}</span>
-                                <span class="label" style="background:var(--secondary)">${im.total}</span>
-                            </div>
-                        `;
+                    imoveisHtml += window.renderRankingRow(im, i, 'var(--secondary)');
                 });
             }
+
+            const verTodosBtn = atendentesAll.length > 5
+                ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Atendentes', window._allAtendentes, 'var(--primary)')">Ver todos (${atendentesAll.length})</button>`
+                : '';
 
             container.innerHTML = `
                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
@@ -2025,6 +2110,7 @@ window.loadRelatorios = async function () {
                         <div class="card" style="padding: 20px;">
                             <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Atendentes</h4>
                             ${atendentesHtml}
+                            ${verTodosBtn}
                         </div>
                         
                         <div class="card" style="padding: 20px;">
@@ -2034,6 +2120,8 @@ window.loadRelatorios = async function () {
                         
                     </div>
                 `;
+
+            window._allAtendentes = atendentesAll;
         } else {
             container.innerHTML = '<p style="text-align:center; color:red;">' + (data.error || 'Erro ao carregar') + '</p>';
         }

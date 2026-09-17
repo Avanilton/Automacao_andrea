@@ -10,30 +10,46 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'list') {
     $pdo = getConnection();
-    // Listar tarefas não excluídas (suporta MySQL Strict mode ou zero-dates de imports cPanel)
-    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00' ORDER BY created_at DESC");
+    
+    $page = max(1, intval($_GET['page'] ?? 1));
+    $limit = max(1, min(200, intval($_GET['limit'] ?? 50)));
+    $offset = ($page - 1) * $limit;
+    
+    $countStmt = $pdo->query("SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00'");
+    $total = (int)$countStmt->fetchColumn();
+    $totalPages = max(1, (int)ceil($total / $limit));
+    
+    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NULL OR deleted_at = '0000-00-00 00:00:00' ORDER BY created_at DESC LIMIT $limit OFFSET $offset");
     $tasks = $stmt->fetchAll();
     
-    // Buscar compartilhamentos
-    $stmtShares = $pdo->query("SELECT task_id, user_id FROM task_shares");
-    $shares = $stmtShares->fetchAll();
-    
-    // Mapear compartilhamentos para as tarefas
-    foreach ($tasks as &$task) {
-        $task['shared_with'] = [];
-        foreach ($shares as $share) {
-            if ($share['task_id'] == $task['id']) {
-                $task['shared_with'][] = (string)$share['user_id']; // Javascript espera string na nossa logica
-            }
-        }
-        // Aliases to match JS mocks if necessary (mock had 'name' instead of property_name)
-        // JS mock usa t.name e t.client, então vamos criar alias
-        $task['name'] = $task['property_name'];
-        $task['client'] = $task['client_name'];
-        $task['type'] = 'Cobrança'; // mock fallback
+    $taskIds = array_column($tasks, 'id');
+    $shares = [];
+    if (!empty($taskIds)) {
+        $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
+        $stmtShares = $pdo->prepare("SELECT task_id, user_id FROM task_shares WHERE task_id IN ($placeholders)");
+        $stmtShares->execute($taskIds);
+        $shares = $stmtShares->fetchAll();
     }
     
-    jsonResponse(['success' => true, 'tasks' => $tasks]);
+    $sharesByTask = [];
+    foreach ($shares as $share) {
+        $sharesByTask[$share['task_id']][] = (string)$share['user_id'];
+    }
+    
+    foreach ($tasks as &$task) {
+        $task['shared_with'] = $sharesByTask[$task['id']] ?? [];
+        $task['name'] = $task['property_name'];
+        $task['client'] = $task['client_name'];
+        $task['type'] = 'Cobrança';
+    }
+    
+    jsonResponse([
+        'success' => true,
+        'tasks' => $tasks,
+        'total' => $total,
+        'page' => $page,
+        'totalPages' => $totalPages
+    ]);
 }
 
 if ($action === 'list_trash') {
