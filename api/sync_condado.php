@@ -1,5 +1,5 @@
 <?php
-require_once 'config.php';
+require_once 'auth_middleware.php';
 
 // Limpa qualquer buffer iniciado no config.php para mostrar texto instantaneamente
 while (ob_get_level()) {
@@ -8,6 +8,7 @@ while (ob_get_level()) {
 
 header('Content-Type: text/html; charset=utf-8');
 session_start();
+requireAdmin();
 
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
 $lastId = isset($_GET['lastId']) ? (int)$_GET['lastId'] : 0;
@@ -189,7 +190,8 @@ try {
         echo "<p><a href='../index.html'>Voltar para o sistema</a></p>";
     }
 } catch (Exception $e) {
-    echo "<h3 style='color:red;'>❌ Ocorreu um erro: " . $e->getMessage() . "</h3>";
+    error_log('[CobrancaTask] sync_condado: ' . $e->getMessage());
+    echo "<h3 style='color:red;'>❌ Ocorreu um erro na sincronização. Verifique os logs do servidor.</h3>";
 }
 echo "</div>";
 ?>

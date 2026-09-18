@@ -66,6 +66,7 @@ if ($action === 'list') {
 if ($action === 'get') {
     $pdo = getConnection();
     $task_id = $_GET['id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $stmt = $pdo->prepare("SELECT * FROM tasks WHERE id = ?");
     $stmt->execute([$task_id]);
     $task = $stmt->fetch();
@@ -89,24 +90,30 @@ if ($action === 'list_trash') {
 }
 
 if ($action === 'soft_delete') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $stmt = $pdo->prepare("UPDATE tasks SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?");
     $stmt->execute([$task_id]);
     jsonResponse(['success' => true]);
 }
 
 if ($action === 'restore') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $stmt = $pdo->prepare("UPDATE tasks SET deleted_at = NULL WHERE id = ?");
     $stmt->execute([$task_id]);
     jsonResponse(['success' => true]);
 }
 
 if ($action === 'force_delete') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = ?");
     $stmt->execute([$task_id]);
     jsonResponse(['success' => true]);
@@ -114,17 +121,19 @@ if ($action === 'force_delete') {
 
 if ($action === 'truncate_tasks') {
     requireAdmin();
+    requireCsrf();
     $pdo = getConnection();
     try {
         $pdo->query("DELETE FROM task_shares");
         $pdo->query("DELETE FROM tasks");
         jsonResponse(['success' => true]);
     } catch (Exception $e) {
-        jsonResponse(['success' => false, 'error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'error' => 'Erro ao limpar tarefas.']);
     }
 }
 
 if ($action === 'create') {
+    requireCsrf();
     // Distribuir tarefas
     $data = json_decode(file_get_contents("php://input"), true);
     
@@ -157,11 +166,12 @@ if ($action === 'create') {
         jsonResponse(['success' => true]);
     } catch(Exception $e) {
         $pdo->rollBack();
-        jsonResponse(['error' => 'Erro ao salvar tarefas: ' . $e->getMessage()], 500);
+        jsonResponse(['error' => 'Erro ao salvar tarefas'], 500);
     }
 }
 
 if ($action === 'import_bulk') {
+    requireCsrf();
     $data = json_decode(file_get_contents("php://input"), true);
     
     if(!isset($data['tasks']) || !is_array($data['tasks'])) {
@@ -192,13 +202,15 @@ if ($action === 'import_bulk') {
         jsonResponse(['success' => true]);
     } catch(Exception $e) {
         $pdo->rollBack();
-        jsonResponse(['error' => 'Erro ao importar tarefas: ' . $e->getMessage()], 500);
+        jsonResponse(['error' => 'Erro ao importar tarefas'], 500);
     }
 }
 
 if ($action === 'update_status') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $status = $_POST['status'] ?? '';
     
     $stmt = $pdo->prepare("UPDATE tasks SET status = ? WHERE id = ?");
@@ -208,9 +220,11 @@ if ($action === 'update_status') {
 }
 
 if ($action === 'add_update') {
+    requireCsrf();
     // Adicionar Atendimento
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $content = $_POST['content'] ?? '';
     
     $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content) VALUES (?, ?, ?)");
@@ -224,8 +238,10 @@ if ($action === 'add_update') {
 }
 
 if ($action === 'reassign') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $new_user_id = $_POST['user_id'] ?? 0;
     
     // Update owner and remove from shares if they were shared
@@ -239,8 +255,10 @@ if ($action === 'reassign') {
 }
 
 if ($action === 'share_task') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $user_id_to_share = $_POST['user_id'] ?? 0;
     
     try {
@@ -248,13 +266,15 @@ if ($action === 'share_task') {
         $stmt->execute([$task_id, $user_id_to_share]);
         jsonResponse(['success' => true]);
     } catch(Exception $e) {
-        jsonResponse(['success' => false, 'error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'error' => 'Erro ao compartilhar tarefa.']);
     }
 }
 
 if ($action === 'unshare_task') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $user_id_to_unshare = $_POST['user_id'] ?? 0;
     
     $stmt = $pdo->prepare("DELETE FROM task_shares WHERE task_id = ? AND user_id = ?");
@@ -264,8 +284,10 @@ if ($action === 'unshare_task') {
 }
 
 if ($action === 'update_details') {
+    requireCsrf();
     $pdo = getConnection();
     $task_id = $_POST['task_id'] ?? 0;
+    canAccessTask($pdo, $task_id);
     $start_date = $_POST['start_date'] ?? null;
     $due_date = $_POST['due_date'] ?? null;
     $observations = $_POST['observations'] ?? '';

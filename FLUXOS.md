@@ -1,6 +1,6 @@
 # Fluxos do Sistema Cobrança Task
 
-**Versão:** 1.2.0  
+**Versão:** 1.3.0  
 **Última atualização:** 18/09/2026
 
 ---
@@ -40,9 +40,13 @@ index.html → login.html → dashboard.html
 | 2 | Preenche e-mail e senha | — |
 | 3 | Clica "Entrar" | — |
 | 4 | — | JS envia POST para `api/auth.php?action=login` |
-| 5 | — | PHP valida com `password_verify()`, retorna dados do usuário |
-| 6 | — | JS salva sessão no `localStorage` (`cobranca_user`) |
+| 5 | — | PHP valida com `password_verify()`, regenera ID da sessão, retorna dados do usuário + `csrf_token` |
+| 6 | — | JS salva sessão no `localStorage` (`cobranca_user` + `cobranca_csrf`) |
 | 7 | — | Redireciona para `dashboard.html` |
+
+### CSRF nos POSTs seguintes
+
+Todo POST posterior envia o header `X-CSRF-Token` (wrapper do `fetch` em `js/app.js:3-13`). O backend valida com `requireCsrf()` e retorna HTTP 403 se o token for inválido.
 
 ### Detalhes Técnicos
 
@@ -61,13 +65,14 @@ FormData: email, password
 ```json
 {
   "success": true,
-  "user": { "id": 1, "name": "Admin", "email": "...", "role": "admin" }
+  "user": { "id": 1, "name": "Admin", "email": "...", "role": "admin" },
+  "csrf_token": "a8f3b2..."
 }
 ```
 
 **Sessão:**
-- PHP: `$_SESSION['user_id']` e `$_SESSION['role']`
-- Browser: `localStorage.setItem('cobranca_user', JSON.stringify(user))`
+- PHP: `$_SESSION['user_id']`, `$_SESSION['role']` e `$_SESSION['csrf_token']`
+- Browser: `localStorage` com `cobranca_user` e `cobranca_csrf`
 
 **Timer de inatividade:** 10 minutos (`js/auth.js:27-53`). Após idle, faz logout automático.
 
@@ -573,7 +578,7 @@ Acesso manual → sync_condado.php → Passo 1 (boletos) → Passo 2 (clientes) 
 
 | # | Ação | O que acontece |
 |---|------|----------------|
-| 1 | Acessa `api/sync_condado.php` | Inicia sincronização |
+| 1 | Acessa `api/sync_condado.php` (admin logado) | `requireAdmin()` valida; sem admin retorna 403 |
 | 2 | Passo 1: Boletos | Conecta ao Condado, paga boletos em aberto |
 | 3 | — | Insere em `cache_boletos` (lotes de 5000) |
 | 4 | Passo 2: Clientes | Paga clientes, imóveis, blocos, situações |
@@ -607,7 +612,7 @@ Acesso manual → sync_condado.php → Passo 1 (boletos) → Passo 2 (clientes) 
 | `api/settings.php` | GET, POST | Logado (get) / Admin (save) | get, save permissões |
 | `api/tickets.php` | GET, POST | Logado (create) / Admin (list/update_status) | create, list, update_status |
 | `api/condado.php` | GET | Logado | fetch_data, fetch_client_details |
-| `api/sync_condado.php` | GET | — | Sincronização completa |
+| `api/sync_condado.php` | GET | **Admin** | Sincronização completa |
 
 ---
 

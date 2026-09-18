@@ -55,6 +55,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    jsonResponse(['error' => 'Erro ao gerar relatórios: ' . $e->getMessage()], 500);
+    jsonResponse(['error' => 'Erro ao gerar relatórios'], 500);
 }
 ?>

@@ -24,6 +24,7 @@ if ($action === 'get') {
 
 if ($action === 'save') {
     requireAdmin();
+    requireCsrf();
     $data = file_get_contents("php://input");
     file_put_contents($settingsFile, $data);
     echo json_encode(['success' => true]);

@@ -1,4 +1,25 @@
 // js/app.js
+// CSRF Token helper
+const originalFetch = window.fetch;
+window.fetch = function(url, options) {
+    if (options && options.method === 'POST') {
+        if (!options.headers) options.headers = {};
+        const csrfToken = localStorage.getItem('cobranca_csrf');
+        if (csrfToken) {
+            options.headers['X-CSRF-Token'] = csrfToken;
+        }
+    }
+    return originalFetch.apply(this, arguments);
+};
+
+// XSS Protection helper
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(String(str)));
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- User Session ---
     let userStr = null;
@@ -695,12 +716,12 @@ window.loadUsers = async function () {
                 data.users.forEach(u => {
                     tbody.innerHTML += `
                             <tr>
-                                <td>${u.name}</td>
-                                <td>${u.email}</td>
+                                <td>${escapeHtml(u.name)}</td>
+                                <td>${escapeHtml(u.email)}</td>
                                 <td><span class="label" style="background-color: ${u.role === 'admin' ? 'var(--primary)' : 'var(--text-muted)'};">${u.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
                                 <td>
-                                    <button class="btn-secondary btn-sm" onclick="editUser(${u.id})">Editar</button>
-                                    <button class="btn-secondary btn-sm danger-text" style="margin-left:5px;" onclick="deleteUser(${u.id})">Excluir</button>
+                                    <button class="btn-secondary btn-sm" onclick="editUser(${parseInt(u.id)})">Editar</button>
+                                    <button class="btn-secondary btn-sm danger-text" style="margin-left:5px;" onclick="deleteUser(${parseInt(u.id)})">Excluir</button>
                                 </td>
                             </tr>
                         `;
@@ -885,7 +906,7 @@ window.loadLixeira = async function () {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                     <td><span class="label" style="background-color: #3B82F6; cursor:default;">Tarefa</span></td>
-                    <td>${item.property_name || item.name || 'Desconhecido'}</td>
+                    <td>${escapeHtml(item.property_name || item.name || 'Desconhecido')}</td>
                     <td>${item.deleted_at}</td>
                     <td>
                         <button class="btn-secondary btn-sm" onclick="restoreTrash(${item.id})">Restaurar</button>
@@ -1099,18 +1120,18 @@ async function fetchCondadoData(searchTerm = '') {
         html += `
                 <tr>
                     <td><input type="checkbox" class="task-check" 
-                        value="${row.client_code}"
-                        data-name="${row.property_name}"
-                        data-client="${row.client_name}"
-                        data-bloco="${row.bloco || ''}"
-                        data-apto="${row.apto || ''}"
-                        data-situacao="${row.situacao || ''}"
-                        data-type="${row.type || 'Cobrança'}"></td>
-                    <td>${row.property_code || ''}</td>
-                    <td>${row.property_name}</td>
-                    <td>${row.client_name}</td>
-                    <td>${blocoApto}</td>
-                    <td>${row.situacao || ''}</td>
+                        value="${escapeHtml(row.client_code)}"
+                        data-name="${escapeHtml(row.property_name)}"
+                        data-client="${escapeHtml(row.client_name)}"
+                        data-bloco="${escapeHtml(row.bloco || '')}"
+                        data-apto="${escapeHtml(row.apto || '')}"
+                        data-situacao="${escapeHtml(row.situacao || '')}"
+                        data-type="${escapeHtml(row.type || 'Cobrança')}"></td>
+                    <td>${escapeHtml(row.property_code || '')}</td>
+                    <td>${escapeHtml(row.property_name)}</td>
+                    <td>${escapeHtml(row.client_name)}</td>
+                    <td>${escapeHtml(blocoApto)}</td>
+                    <td>${escapeHtml(row.situacao || '')}</td>
                 </tr>
             `;
     });
@@ -1351,9 +1372,9 @@ window.loadTarefas = async function (reset = true) {
         let userName = assignedUser ? assignedUser.name : 'Não atribuído';
         if (t.shared_with && t.shared_with.length > 0) userName += ` (+${t.shared_with.length})`;
 
-        const clientText = t.client ? `${t.client} <br><small style="color:var(--text-muted)">Atendente: ${userName}</small>` : userName;
+        const clientText = t.client ? `${escapeHtml(t.client)} <br><small style="color:var(--text-muted)">Atendente: ${escapeHtml(userName)}</small>` : escapeHtml(userName);
 
-        let delBtn = isAdmin ? `<button class="btn-secondary danger-text" onclick="deleteServerTask('${t.id}')">Excluir</button>` : '';
+        let delBtn = isAdmin ? `<button class="btn-secondary danger-text" onclick="deleteServerTask('${parseInt(t.id)}')">Excluir</button>` : '';
 
         let statusInfo = statusMap[t.status] || (t.status ? { label: t.status.charAt(0).toUpperCase() + t.status.slice(1), bg: 'var(--primary)' } : { label: 'A Fazer', bg: '#64748B' });
         let dueWarning = '';
@@ -1364,7 +1385,7 @@ window.loadTarefas = async function (reset = true) {
             else if (diffDays < 0) dueWarning = '<br><span class="label" style="background-color: var(--danger); font-size: 0.7rem; display:inline-block; margin-top:3px;" title="Atrasado">\u26A0\ufe0f Atrasado</span>';
         }
 
-        html += `<tr><td>${t.name} ${dueWarning}</td><td>${clientText}</td><td>${t.created_at}</td><td><span class="label" style="${baseStyle} background: ${statusInfo.bg};">${statusInfo.label}</span></td><td><div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${t.id}')">Abrir</button>${delBtn}</div></td></tr>`;
+        html += `<tr><td>${escapeHtml(t.name)} ${dueWarning}</td><td>${clientText}</td><td>${escapeHtml(t.created_at)}</td><td><span class="label" style="${baseStyle} background: ${statusInfo.bg};">${statusInfo.label}</span></td><td><div class="table-actions"><button class="btn-secondary" onclick="openTaskDetails('${parseInt(t.id)}')">Abrir</button>${delBtn}</div></td></tr>`;
     }
 
     tbody.innerHTML = html;
@@ -1560,7 +1581,7 @@ window.loadKanbanCards = async function (forceReload = false) {
             else if (diffDays < 0) dueWarning = '<div style="margin-top:5px;"><span class="label" style="background-color: var(--danger); font-size: 0.7rem; margin-left: 5px;">\u26A0\ufe0f Atrasado</span></div>';
         }
 
-        const card = `<div class="kanban-card" id="card-${t.id}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${t.id}')">${deleteBtn}<div class="card-labels"><span class="label" style="background: var(--primary)">${t.type}</span></div>${dueWarning}<div class="card-title" style="margin-top: 5px;">${t.name}</div><div class="card-client">${t.client || 'Sem cliente'}</div><div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);"><span>Atrib: ${userName}</span></div></div>`;
+        const card = `<div class="kanban-card" id="card-${escapeHtml(t.id)}" style="position: relative;" draggable="true" ondragstart="dragCard(event)" onclick="openTaskDetails('${escapeHtml(t.id)}')">${deleteBtn}<div class="card-labels"><span class="label" style="background: var(--primary)">${escapeHtml(t.type)}</span></div>${dueWarning}<div class="card-title" style="margin-top: 5px;">${escapeHtml(t.name)}</div><div class="card-client">${escapeHtml(t.client || 'Sem cliente')}</div><div class="card-footer" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);"><span>Atrib: ${escapeHtml(userName)}</span></div></div>`;
 
         if (colCards[status]) {
             colCards[status].push(card);
@@ -1676,10 +1697,10 @@ window.openTaskDetails = async function (taskId) {
     }
 
     document.getElementById('taskDetailsContent').innerHTML = `
-            <p><strong>Imóvel:</strong> ${t.name || 'N/A'}</p>
-            <p><strong>Cliente:</strong> ${t.client || 'N/A'}</p>
+            <p><strong>Imóvel:</strong> ${escapeHtml(t.name || 'N/A')}</p>
+            <p><strong>Cliente:</strong> ${escapeHtml(t.client || 'N/A')}</p>
             ${extraInfo}
-            <p><strong>Tipo:</strong> ${t.type || 'N/A'}</p>
+            <p><strong>Tipo:</strong> ${escapeHtml(t.type || 'N/A')}</p>
             <p style="display:flex; align-items:center;">
                 <strong style="margin-right:5px;">Status:</strong> 
                 <select id="selectTaskStatusModal" class="form-control form-sm" style="width:auto;" onchange="changeTaskStatus('${taskId}', this.value)">
@@ -2415,9 +2436,9 @@ window.loadTickets = async function () {
                     const date = new Date(ticket.created_at).toLocaleDateString('pt-BR');
 
                     html += '<tr>';
-                    html += '<td>#' + ticket.id + '</td>';
-                    html += '<td>' + ticket.user_name + '<br><small style="color: var(--text-muted);">' + ticket.user_email + '</small></td>';
-                    html += '<td><strong>' + ticket.subject + '</strong></td>';
+                    html += '<td>#' + parseInt(ticket.id) + '</td>';
+                    html += '<td>' + escapeHtml(ticket.user_name) + '<br><small style="color: var(--text-muted);">' + escapeHtml(ticket.user_email) + '</small></td>';
+                    html += '<td><strong>' + escapeHtml(ticket.subject) + '</strong></td>';
                     html += '<td>' + date + '</td>';
                     html += '<td><span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; ' + statusColors[ticket.status] + '">' + statusLabels[ticket.status] + '</span></td>';
                     html += '<td>';
@@ -2489,10 +2510,10 @@ window.viewTicket = function (id) {
                     <div class="modal-body" style="padding:1.5rem;">
                         <div style="margin-bottom:1.5rem;">
                             <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
-                                <div class="avatar-circle" style="width:40px; height:40px; font-size:1rem; flex-shrink:0;">${ticket.user_name.charAt(0).toUpperCase()}</div>
+                                <div class="avatar-circle" style="width:40px; height:40px; font-size:1rem; flex-shrink:0;">${escapeHtml(ticket.user_name.charAt(0).toUpperCase())}</div>
                                 <div>
-                                    <strong>${ticket.user_name}</strong><br>
-                                    <small style="color:var(--text-muted);">${ticket.user_email}</small>
+                                    <strong>${escapeHtml(ticket.user_name)}</strong><br>
+                                    <small style="color:var(--text-muted);">${escapeHtml(ticket.user_email)}</small>
                                 </div>
                                 <div style="margin-left:auto;">
                                     <span style="padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:600; ${statusColors[ticket.status]}">${statusLabels[ticket.status]}</span>
@@ -2502,7 +2523,7 @@ window.viewTicket = function (id) {
                         </div>
                         <div style="margin-bottom:1rem;">
                             <h4 style="margin-bottom:0.5rem; color:var(--primary);">Assunto</h4>
-                            <p style="font-size:1rem;">${ticket.subject}</p>
+                            <p style="font-size:1rem;">${escapeHtml(ticket.subject)}</p>
                         </div>
                         <div>
                             <h4 style="margin-bottom:0.5rem; color:var(--primary);">Descrição</h4>

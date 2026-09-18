@@ -44,7 +44,7 @@ if ($action === 'fetch_data') {
     } catch (PDOException $e) {
         jsonResponse([
             'success' => false, 
-            'error' => 'Falha ao ler cache de clientes: ' . $e->getMessage()
+            'error' => 'Falha ao ler cache de clientes'
         ], 500);
     }
 }
@@ -91,7 +91,7 @@ if ($action === 'fetch_client_details') {
     } catch (PDOException $e) {
         jsonResponse([
             'success' => false, 
-            'error' => 'Falha ao buscar detalhes no cache local: ' . $e->getMessage()
+            'error' => 'Falha ao buscar detalhes no cache local'
         ], 500);
     }
 }

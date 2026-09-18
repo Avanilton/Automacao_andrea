@@ -13,6 +13,7 @@ if ($action === 'list') {
 
 if ($action === 'create') {
     requireAdmin();
+    requireCsrf();
     $pdo = getConnection();
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -37,12 +38,13 @@ if ($action === 'create') {
         $stmt->execute([$name, $email, $hash, $role]);
         jsonResponse(['success' => true]);
     } catch (PDOException $e) {
-        jsonResponse(['success' => false, 'message' => 'Erro ao criar usuário: ' . $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Erro ao criar usuário.']);
     }
 }
 
 if ($action === 'update') {
     requireAdmin();
+    requireCsrf();
     $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     $name = trim($_POST['name'] ?? '');
@@ -65,12 +67,13 @@ if ($action === 'update') {
         }
         jsonResponse(['success' => true]);
     } catch (PDOException $e) {
-        jsonResponse(['success' => false, 'message' => 'Erro ao atualizar usuário: ' . $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Erro ao atualizar usuário.']);
     }
 }
 
 if ($action === 'delete') {
     requireAdmin();
+    requireCsrf();
     $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     
@@ -89,6 +92,7 @@ if ($action === 'delete') {
 
 if ($action === 'update_profile') {
     requireAuth();
+    requireCsrf();
     $pdo = getConnection();
     $id = (int)$_SESSION['user_id'];
     $name = trim($_POST['name'] ?? '');
@@ -110,8 +114,12 @@ if ($action === 'update_profile') {
 
 if ($action === 'update_avatar') {
     requireAuth();
+    requireCsrf();
     $pdo = getConnection();
-    $id = (int)($_POST['id'] ?? $_SESSION['user_id']);
+    $id = (int)$_SESSION['user_id'];
+    if (getCurrentUserRole() === 'admin' && isset($_POST['id'])) {
+        $id = (int)$_POST['id'];
+    }
     
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['avatar'];
@@ -139,7 +147,7 @@ if ($action === 'update_avatar') {
                 
                 jsonResponse(['success' => true, 'avatar' => $avatarUrl]);
             } catch (PDOException $e) {
-                jsonResponse(['success' => false, 'message' => 'Erro ao salvar avatar: ' . $e->getMessage()]);
+                jsonResponse(['success' => false, 'message' => 'Erro ao salvar avatar.']);
             }
         } else {
             jsonResponse(['success' => false, 'message' => 'Erro ao fazer upload da imagem.']);
