@@ -1,11 +1,11 @@
 <?php
-require_once 'config.php';
-session_start();
+require_once 'auth_middleware.php';
 
 $action = $_GET['action'] ?? 'get';
 $settingsFile = __DIR__ . '/settings.json';
 
 if ($action === 'get') {
+    requireAuth();
     if (file_exists($settingsFile)) {
         echo file_get_contents($settingsFile);
     } else {
@@ -23,6 +23,8 @@ if ($action === 'get') {
 }
 
 if ($action === 'save') {
+    requireAdmin();
+    requireCsrf();
     $data = file_get_contents("php://input");
     file_put_contents($settingsFile, $data);
     echo json_encode(['success' => true]);

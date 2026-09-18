@@ -1,0 +1,19 @@
+# Bloquear acesso a arquivos de teste e debug em produção
+<FilesMatch "^(test_|debug_|dump_|run_query|find_tables|check_schema|check\.js|fix_emoji|sample_data|extrair_)">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acesso a arquivos .env
+<Files ".env">
+    Require all denied
+</Files>
+
+# Bloquear acesso a arquivos JSON de dados
+<FilesMatch "\.json$">
+    <If "%{REQUEST_URI} =~ m#/api/settings\.json#">
+        # Permitir settings.json via API
+    </If>
+    <Else>
+        Require all denied
+    </Else>
+</FilesMatch>

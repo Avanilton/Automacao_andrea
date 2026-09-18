@@ -1,7 +1,6 @@
 <?php
 // api/auth.php
-require_once 'config.php';
-session_start();
+require_once 'auth_middleware.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -19,13 +18,14 @@ if ($action === 'login') {
     $user = $stmt->fetch();
     
     if ($user && password_verify($password, $user['password'])) {
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role'] = $user['role'];
+        $csrfToken = generateCsrfToken();
         
-        // Remove password from response
         unset($user['password']);
         
-        jsonResponse(['success' => true, 'user' => $user]);
+        jsonResponse(['success' => true, 'user' => $user, 'csrf_token' => $csrfToken]);
     } else {
         jsonResponse(['success' => false, 'error' => 'Credenciais inválidas.']);
     }
@@ -37,6 +37,7 @@ if ($action === 'logout') {
 }
 
 if ($action === 'change_password') {
+    requireCsrf();
     $current_password = $_POST['current_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
 

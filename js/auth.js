@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await fetch('api/auth.php?action=logout');
                 } catch(e) {}
                 localStorage.removeItem('cobranca_user');
+                localStorage.removeItem('cobranca_csrf');
                 alert('Sua sessão expirou devido a 10 minutos de inatividade.');
                 window.location.href = 'login.html';
             };
@@ -75,6 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if(data.success) {
                     localStorage.setItem('cobranca_user', JSON.stringify(data.user));
+                    if (data.csrf_token) {
+                        localStorage.setItem('cobranca_csrf', data.csrf_token);
+                    }
                     window.location.href = 'dashboard.html';
                 } else {
                     loginMessage.textContent = data.error || data.message || 'Erro no login.';
@@ -95,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('Backend logout failed', e);
             }
             localStorage.removeItem('cobranca_user');
+            localStorage.removeItem('cobranca_csrf');
             window.location.href = 'login.html';
         });
     }

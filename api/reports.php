@@ -1,11 +1,8 @@
 <?php
 // api/reports.php
-require_once 'config.php';
-session_start();
-
-// Simulação de sessão para desenvolvimento
-$user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
-$role = $_SESSION['role'] ?? 'user';
+require_once 'auth_middleware.php';
+$user_id = getCurrentUserId();
+$role = getCurrentUserRole();
 
 try {
     $pdo = getConnection();
@@ -58,6 +55,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    jsonResponse(['error' => 'Erro ao gerar relatórios: ' . $e->getMessage()], 500);
+    jsonResponse(['error' => 'Erro ao gerar relatórios'], 500);
 }
 ?>

@@ -18,5 +18,6 @@ try {
     echo "Tempo da query: " . round($end - $start, 2) . " segundos\n";
 
 } catch (Exception $e) {
-    echo "Erro: " . $e->getMessage();
+    error_log('[CobrancaTask] test_condado: ' . $e->getMessage());
+    echo "Erro ao testar conexão. Verifique os logs do servidor.";
 }

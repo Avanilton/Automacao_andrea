@@ -1,7 +1,7 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.1.0  
-**Última atualização:** 17/09/2026
+**Versão:** 1.3.0  
+**Última atualização:** 18/09/2026
 
 ---
 
@@ -26,6 +26,18 @@ O **Cobrança Task** é um sistema web para gestão de cobranças e tarefas de c
 3. Inicie o Apache e o MySQL pelo Painel XAMPP
 4. Acesse `http://localhost/Automacao_andrea-main/login.html`
 5. Login padrão: `admin@cobrancatask.com` / `password`
+6. Copie as credenciais do banco para o arquivo `.env` (não versionado):
+```
+DB_HOST=localhost
+DB_NAME=bvgarantia_cobrancatask
+DB_USER=bvgarantia_cobranca
+DB_PASS=sua_senha
+CONDADO_DB_HOST=sistemasnovacorp.com.br
+CONDADO_DB_PORT=5643
+CONDADO_DB_NAME=novacorpconect
+CONDADO_DB_USER=Intelligence
+CONDADO_DB_PASS=sua_senha
+```
 
 ---
 
@@ -35,6 +47,7 @@ O **Cobrança Task** é um sistema web para gestão de cobranças e tarefas de c
 Automacao_andrea-main/
 ├── api/                    # Backend PHP (APIs)
 │   ├── config.php          # Configurações do banco de dados
+│   ├── auth_middleware.php  # Middleware de autenticação e autorização
 │   ├── auth.php            # Autenticação (login/logout)
 │   ├── tasks.php           # CRUD de tarefas
 │   ├── users.php           # Gerenciamento de usuários
@@ -60,6 +73,8 @@ Automacao_andrea-main/
 ├── index.html              # Página inicial (landing page)
 ├── database.sql            # Schema do banco de dados
 ├── DOCUMENTACAO.md         # Este arquivo
+├── .env                    # Credenciais (NÃO versionado, ver .gitignore)
+├── .htaccess               # Bloqueio de arquivos de teste/debug/.env
 └── .gitignore              # Regras de ignore do Git
 ```
 
@@ -81,7 +96,7 @@ Dashboard principal e mais importante do sistema. É uma **SPA (Single Page Appl
 - **Sidebar** com navegação (Tarefas, Kanban, Relatórios, Configurações, Ajuda)
 - **Área principal** onde as views são renderizadas
 - **Modais** para criação de tarefas, distribuição, detalhes, etc.
-- **Versão do sistema** exibida no rodapé da sidebar (v1.1.0)
+- **Versão do sistema** exibida no rodapé da sidebar (v1.3.0)
 
 ---
 
@@ -103,7 +118,11 @@ Estilo principal do sistema (1185 linhas). Funcionalidades:
 ### JavaScript Frontend
 
 #### `js/app.js`
-Arquivo principal da aplicação (2441 linhas). Contém toda a lógica do frontend:
+Arquivo principal da aplicação (2563 linhas). Contém toda a lógica do frontend:
+
+**Segurança frontend (v1.3.0):**
+- Wrapper do `fetch` — injeta `X-CSRF-Token` (de `cobranca_csrf`) em todo POST
+- `escapeHtml(str)` — neutraliza XSS antes de qualquer `innerHTML`
 
 **Sessão e Usuário:**
 - Leitura da sessão via `localStorage` (`cobranca_user`)
@@ -156,12 +175,12 @@ Arquivo principal da aplicação (2441 linhas). Contém toda a lógica do fronte
 ---
 
 #### `js/auth.js`
-Gerencia autenticação e sessão (101 linhas):
+Gerencia autenticação e sessão (106 linhas):
 
-- `handleLogin()` — envia formulário de login para `api/auth.php`
+- `handleLogin()` — envia formulário de login para `api/auth.php`, salva `cobranca_user` e `cobranca_csrf` no localStorage
 - `checkSession()` — verifica se o usuário está logado
-- `handleLogout()` — limpa localStorage e redireciona para login
-- **Timeout de 10 minutos** — logout automático por inatividade
+- `handleLogout()` — limpa `cobranca_user` e `cobranca_csrf`, redireciona para login
+- **Timeout de 10 minutos** — logout automático por inatividade (limpa user + token CSRF)
 
 ---
 
@@ -177,61 +196,81 @@ Toggle de tema claro/escuro (19 linhas):
 ### PHP API
 
 #### `api/config.php`
-Configurações e bootstrap do sistema (81 linhas):
+Configurações e bootstrap do sistema (95 linhas):
 
-- **Credenciais do banco local**: `bvgarantia_cobrancatask`
-- **Credenciais do banco externo (Condado)**: `novacorpconect`
+- **Credenciais via `.env`** (nunca hardcoded): `DB_HOST/DB_NAME/DB_USER/DB_PASS` e `CONDADO_DB_*`, lidos com `getenv()` (`.env` está no `.gitignore`)
 - `getConnection()` — conexão PDO com o banco local
 - `getCondadoConnection()` — conexão PDO com o banco externo
 - `jsonResponse()` — helper para respostas JSON
-- Handler de erros com `set_exception_handler`
+- Handler de erros com `set_exception_handler` — detalhe vai para `error_log`, cliente recebe mensagem genérica (`Erro interno do servidor` / `Falha na conexão...`), sem vazar `$e->getMessage()`
+
+---
+
+#### `api/auth_middleware.php`
+Middleware de autenticação e autorização (64 linhas):
+
+- `requireAuth()` — bloqueia acesso se não houver sessão (HTTP 401)
+- `requireAdmin()` — bloqueia acesso se o usuário não for admin (HTTP 403)
+- `requireCsrf()` — bloqueia POST sem `X-CSRF-Token` válido (HTTP 403, compara com `hash_equals`)
+- `generateCsrfToken()` — gera token aleatório (`random_bytes`) por sessão
+- `getCurrentUserId()` — retorna o ID do usuário logado (da sessão)
+- `getCurrentUserRole()` — retorna o papel do usuário logado
+- `canAccessTask($pdo, $taskId)` — admin passa; demais só se forem `assigned_to` ou estiverem em `task_shares` (403 caso contrário)
+
+> **Todos os endpoints protegidos devem incluir este arquivo no início.**
 
 ---
 
 #### `api/auth.php`
-API de autenticação (73 linhas):
+API de autenticação (74 linhas):
 
 | Ação | Método | Descrição |
 |------|--------|-----------|
-| `?action=login` | POST | Valida e-mail e senha, retorna dados do usuário |
+| `?action=login` | POST | Valida e-mail e senha, regenera ID da sessão, retorna dados do usuário + `csrf_token` |
 | `?action=logout` | GET | Destroi a sessão |
 | `?action=check` | GET | Verifica se a sessão é válida |
+| `?action=change_password` | POST | Troca senha (exige `requireCsrf()`) |
 
 ---
 
 #### `api/tasks.php`
-API de tarefas (254 linhas):
+API de tarefas (285 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=list` | GET | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
-| `?action=get` | GET | Busca uma tarefa por ID (usado ao abrir detalhe fora da pagina) |
-| `?action=create` | POST | Cria tarefas em lote |
-| `?action=update_status` | POST | Atualiza status (todo/in_progress/done) |
-| `?action=soft_delete` | POST | Move tarefa para lixeira |
-| `?action=restore` | POST | Restaura tarefa da lixeira |
-| `?action=force_delete` | POST | Exclui tarefa permanentemente |
-| `?action=truncate_tasks` | POST | Limpa todas as tarefas |
-| `?action=update_details` | POST | Atualiza detalhes (datas, observações) |
-| `?action=share_task` | POST | Compartilha tarefa com outro usuário |
-| `?action=unshare_task` | POST | Remove compartilhamento |
-| `?action=reassign` | POST | Reatribui tarefa para outro usuário |
-| `?action=import_bulk` | POST | Importa tarefas em lote (via planilha) |
-| `?action=list_trash` | GET | Lista tarefas excluídas |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=list` | GET | Logado | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
+| `?action=get` | GET | Logado | Busca uma tarefa por ID |
+| `?action=create` | POST | Logado | Cria tarefas em lote |
+| `?action=update_status` | POST | Logado | Atualiza status (todo/in_progress/done) |
+| `?action=soft_delete` | POST | Logado | Move tarefa para lixeira |
+| `?action=restore` | POST | Logado | Restaura tarefa da lixeira |
+| `?action=force_delete` | POST | Logado | Exclui tarefa permanentemente |
+| `?action=truncate_tasks` | POST | **Admin** | Limpa todas as tarefas |
+| `?action=update_details` | POST | Logado | Atualiza detalhes (datas, observações) |
+| `?action=add_update` | POST | Logado | Adiciona atendimento |
+| `?action=reassign` | POST | Logado | Reatribui tarefa para outro usuário |
+| `?action=share_task` | POST | Logado | Compartilha tarefa com outro usuário |
+| `?action=unshare_task` | POST | Logado | Remove compartilhamento |
+| `?action=import_bulk` | POST | Logado | Importa tarefas em lote (via planilha) |
+| `?action=list_trash` | GET | Logado | Lista tarefas excluídas |
+
+> **Segurança (v1.3.0):** Todos os endpoints exigem sessão válida. Todo POST exige `requireCsrf()`. `get`, `soft_delete`, `restore`, `force_delete`, `update_status`, `add_update`, `reassign`, `share_task`, `unshare_task` e `update_details` exigem `canAccessTask()` (dono, compartilhado ou admin). `truncate_tasks` é restrito a admin.
 
 ---
 
 #### `api/users.php`
-API de usuários (130 linhas):
+API de usuários (145 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=list` | GET | Lista todos os usuários |
-| `?action=get` | GET | Busca usuário por ID |
-| `?action=create` | POST | Cria novo usuário |
-| `?action=update` | POST | Atualiza dados do usuário |
-| `?action=delete` | POST | Exclui usuário |
-| `?action=update_avatar` | POST | Atualiza foto do perfil |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=list` | GET | Admin | Lista todos os usuários |
+| `?action=create` | POST | Admin | Cria novo usuário (role sempre `user`) |
+| `?action=update` | POST | Admin | Atualiza dados do usuário (incluindo role) |
+| `?action=delete` | POST | Admin | Exclui usuário (ID 1 protegido) |
+| `?action=update_profile` | POST | Qualquer logado | Atualiza próprio nome/e-mail (não altera role) |
+| `?action=update_avatar` | POST | Qualquer logado | Atualiza foto do próprio perfil (só admin pode passar `id` de outro) |
+
+> **Segurança:** As actions `list`, `create`, `update` e `delete` exigem sessão de admin. A action `update_profile` permite que o próprio usuário edite seus dados sem poder alterar seu cargo.
 
 ---
 
@@ -248,21 +287,23 @@ API de relatórios (63 linhas):
 #### `api/settings.php`
 API de configurações (31 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=get` | GET | Lê permissões do `settings.json` |
-| `?action=save` | POST | Salva permissões no `settings.json` |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=get` | GET | Logado | Lê permissões do `settings.json` |
+| `?action=save` | POST | **Admin** | Salva permissões no `settings.json` (exige `requireCsrf()`) |
 
 ---
 
 #### `api/tickets.php`
 API de chamados (58 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=create` | POST | Abre novo chamado |
-| `?action=list` | GET | Lista chamados (admin vê todos) |
-| `?action=update_status` | POST | Atualiza status (aberto/em_andamento/resolvido) |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=create` | POST | Logado | Abre novo chamado (dados do usuário vêm da sessão) |
+| `?action=list` | GET | **Admin** | Lista chamados |
+| `?action=update_status` | POST | **Admin** | Atualiza status (aberto/em_andamento/resolvido) |
+
+> **Segurança:** Os dados do usuário (id, nome, e-mail) são obtidos da sessão no servidor, não do cliente.
 
 ---
 
@@ -278,12 +319,14 @@ API de integração com Condado (103 linhas):
 ---
 
 #### `api/sync_condado.php`
-Script de sincronização (195 linhas):
+Script de sincronização (196 linhas):
 
+- Exige `requireAdmin()` — só administradores logados podem executar
 - Conecta ao banco Condado (externo)
 - Puxa dados de imóveis, clientes e boletos
 - Salva em tabelas de cache local (`cache_imoveis`, `cache_clientes`, `cache_boletos`)
 - Retorna progresso em tempo real via HTML
+- Erros vão para `error_log`; a tela mostra mensagem genérica
 
 ---
 
@@ -405,12 +448,52 @@ Schema do banco `bvgarantia_cobrancatask`:
 
 > Os scripts de desenvolvimento na raiz também contêm credenciais de banco de dados em texto plano.
 
+### Modelo de Autenticação
+
+Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware `auth_middleware.php` fornece:
+
+| Função | HTTP Status | Quando aplicado |
+|--------|-------------|-----------------|
+| `requireAuth()` | 401 | Qualquer endpoint que exija login |
+| `requireAdmin()` | 403 | Endpoints restritos a administradores |
+
+### Restrições por Endpoint
+
+| Endpoint | Acesso | Observação |
+|----------|--------|------------|
+| `auth.php?action=login` | Público | Único endpoint sem autenticação |
+| `users.php?action=list/create/update/delete` | Admin | Gerenciamento de usuários |
+| `users.php?action=update_profile` | Qualquer logado | Usuário edita apenas seu próprio nome/e-mail |
+| `tasks.php?action=truncate_tasks` | Admin | Limpeza total de dados |
+| `settings.php?action=save` | Admin | Alteração de permissões do sistema |
+| `tickets.php?action=list/update_status` | Admin | Gerenciamento de chamados |
+| `reports.php` | Logado | Relatórios filtrados por papel |
+
+### Proteções Adicionais
+
+- **Role ignore no frontend:** O `saveProfile()` envia apenas nome/e-mail; o cargo é definido exclusivamente pelo admin
+- **Dados de sessão:** Chamados (`tickets`) obtêm dados do usuário da sessão PHP, não do request do cliente
+- **Fallback admin removido:** Todos os endpoints que usavam `$_SESSION['user_id'] ?? 1` agora usam `getCurrentUserId()` que bloqueia sem sessão
+
+### Correções High (v1.3.0)
+
+1. **Credenciais no `.env`:** `api/config.php` lê tudo via `getenv()`; `.env` está no `.gitignore` e é bloqueado pelo `.htaccess`
+2. **Sem vazamento de erros:** `catch` e exception handler registram o detalhe em `error_log` e respondem mensagem genérica (inclui `test_condado.php` e `sync_condado.php`)
+3. **CSRF:** `generateCsrfToken()` no login, `requireCsrf()` em todo POST (`tasks`, `users`, `tickets`, `settings`, `change_password`); frontend injeta `X-CSRF-Token` via wrapper do `fetch`, token guardado em `cobranca_csrf`
+4. **XSS:** `escapeHtml()` no `js/app.js` aplicado às renderizações (usuários, tarefas, kanban, lixeira, Condado, tickets)
+5. **IDOR tarefas:** `canAccessTask()` verifica dono/compartilhamento antes de ler, alterar, excluir, reatribuir ou compartilhar
+6. **IDOR avatar:** `update_avatar` usa sempre o ID da sessão; só admin pode informar `id` de outro usuário
+7. **Sync protegido:** `sync_condado.php` exige `requireAdmin()`
+8. **Arquivos de teste bloqueados:** `.htaccess` nega `test_*`, `debug_*`, `dump_*`, `run_query`, `find_tables`, `check_*`, `fix_emoji`, `sample_data`, `extrair_*`, além de `.env` e JSONs de dados
+
 ---
 
 ## Controle de Versão
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.3.0 | 18/09/2026 | Correções high: credenciais via `.env`, erros genéricos ao cliente (log no servidor), CSRF em todo POST, `escapeHtml()` no frontend, `canAccessTask()` anti-IDOR, avatar usa ID da sessão, `sync_condado.php` restrito a admin, `.htaccess` bloqueando testes/debug/`.env` |
+| 1.2.0 | 18/09/2026 | Correções de segurança: middleware de autenticação (auth_middleware.php), todos os endpoints protegidos com requireAuth/requireAdmin, removido fallback admin em tasks/reports/condado, nova action update_profile para autoatendimento, tickets usa dados da sessão, testes automatizados de segurança (test_security.php) |
 | 1.1.0 | 17/09/2026 | Paginacao real 50/50 (limit/offset/search + total/hasMore), kanban progressivo com botao unico Carregar mais, refresh suave de relatorios (skeleton + fade + count-up) |
 | 1.0.12 | 17/09/2026 | Ranking Top 5 com modal, versão no rodapé da sidebar |
 | 1.0.11 | 16/09/2026 | Paginação de tarefas (50/página), carregamento progressivo Kanban |

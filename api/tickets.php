@@ -1,17 +1,21 @@
 <?php
 // api/tickets.php
-require_once 'config.php';
-session_start();
+require_once 'auth_middleware.php';
 
 $action = $_GET['action'] ?? '';
 
 if ($action === 'create') {
+    requireAuth();
+    requireCsrf();
     $pdo = getConnection();
     $data = json_decode(file_get_contents("php://input"), true);
 
-    $user_id = $data['user_id'] ?? 0;
-    $user_name = trim($data['user_name'] ?? '');
-    $user_email = trim($data['user_email'] ?? '');
+    $user_id = (int)$_SESSION['user_id'];
+    $stmtUser = $pdo->prepare("SELECT name, email FROM users WHERE id = ?");
+    $stmtUser->execute([$user_id]);
+    $userInfo = $stmtUser->fetch();
+    $user_name = $userInfo['name'] ?? '';
+    $user_email = $userInfo['email'] ?? '';
     $subject = trim($data['subject'] ?? '');
     $message = trim($data['message'] ?? '');
 
@@ -24,17 +28,20 @@ if ($action === 'create') {
         $stmt->execute([$user_id, $user_name, $user_email, $subject, $message]);
         jsonResponse(['success' => true, 'message' => 'Chamado aberto com sucesso!', 'ticket_id' => $pdo->lastInsertId()]);
     } catch (PDOException $e) {
-        jsonResponse(['success' => false, 'message' => 'Erro ao abrir chamado: ' . $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Erro ao abrir chamado.']);
     }
 }
 
 if ($action === 'list') {
+    requireAdmin();
     $pdo = getConnection();
     $stmt = $pdo->query("SELECT * FROM tickets ORDER BY created_at DESC");
     jsonResponse(['success' => true, 'tickets' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 if ($action === 'update_status') {
+    requireAdmin();
+    requireCsrf();
     $pdo = getConnection();
     $data = json_decode(file_get_contents("php://input"), true);
 
@@ -50,7 +57,7 @@ if ($action === 'update_status') {
         $stmt->execute([$status, $id]);
         jsonResponse(['success' => true]);
     } catch (PDOException $e) {
-        jsonResponse(['success' => false, 'message' => 'Erro ao atualizar: ' . $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Erro ao atualizar.']);
     }
 }
 
