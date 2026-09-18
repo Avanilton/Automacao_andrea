@@ -8,6 +8,14 @@ function requireAuth() {
     if (empty($_SESSION['user_id'])) {
         jsonResponse(['success' => false, 'error' => 'Não autenticado. Faça login novamente.'], 401);
     }
+    // Timeout de inatividade no servidor (10 min, igual ao frontend)
+    $idleLimit = 10 * 60;
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $idleLimit)) {
+        session_unset();
+        session_destroy();
+        jsonResponse(['success' => false, 'error' => 'Sessão expirada por inatividade. Faça login novamente.'], 401);
+    }
+    $_SESSION['last_activity'] = time();
 }
 
 function requireAdmin() {
@@ -43,8 +51,16 @@ function getCurrentUserRole() {
     return $_SESSION['role'] ?? 'user';
 }
 
-function canAccessTask($pdo, $taskId) {
-    $userId = getCurrentUserId();
+function assertUserExists($pdo, $id) {
+    $id = (int)$id;
+    if ($id < 1) jsonResponse(['success' => false, 'error' => 'Usuário inválido.'], 400);
+    $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
+    $stmt->execute([$id]);
+    if (!$stmt->fetch()) jsonResponse(['success' => false, 'error' => 'Usuário não encontrado.'], 404);
+    return $id;
+}
+
+function canAccessTask($pdo, $taskId) {    $userId = getCurrentUserId();
     if (getCurrentUserRole() === 'admin') return true;
     
     $stmt = $pdo->prepare("SELECT assigned_to FROM tasks WHERE id = ?");

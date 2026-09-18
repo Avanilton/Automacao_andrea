@@ -84,8 +84,14 @@ if ($action === 'get') {
 
 if ($action === 'list_trash') {
     $pdo = getConnection();
-    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
-    $tasks = $stmt->fetchAll();
+    if (getCurrentUserRole() === 'admin') {
+        $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
+        $tasks = $stmt->fetchAll();
+    } else {
+        $stmt = $pdo->prepare("SELECT DISTINCT t.* FROM tasks t LEFT JOIN task_shares s ON s.task_id = t.id AND s.user_id = ? WHERE t.deleted_at IS NOT NULL AND (t.assigned_to = ? OR s.user_id = ?) ORDER BY t.deleted_at DESC");
+        $stmt->execute([$user_id, $user_id, $user_id]);
+        $tasks = $stmt->fetchAll();
+    }
     jsonResponse(['success' => true, 'tasks' => $tasks]);
 }
 
@@ -144,6 +150,7 @@ if ($action === 'create') {
     $assigned_to = $data['assigned_to'];
     
     $pdo = getConnection();
+    $assigned_to = assertUserExists($pdo, $assigned_to);
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -179,18 +186,23 @@ if ($action === 'import_bulk') {
     }
     
     $pdo = getConnection();
+    // Valida todos os responsáveis antes de abrir a transação
+    $assignees = [];
+    foreach ($data['tasks'] as $task) {
+        $assignees[] = assertUserExists($pdo, $task['assigned_to'] ?? $user_id);
+    }
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, observations, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
-        foreach($data['tasks'] as $task) {
+        foreach($data['tasks'] as $i => $task) {
             $stmt->execute([
                 $task['property_name'] ?? '',
                 $task['client_code'] ?? '',
                 $task['client_name'] ?? '',
                 $task['value'] ?? 0,
                 !empty($task['due_date']) ? $task['due_date'] : null,
-                $task['assigned_to'] ?? $user_id,
+                $assignees[$i],
                 $user_id,
                 $task['bloco'] ?? null,
                 $task['apto'] ?? null,
@@ -243,6 +255,7 @@ if ($action === 'reassign') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $new_user_id = $_POST['user_id'] ?? 0;
+    $new_user_id = assertUserExists($pdo, $new_user_id);
     
     // Update owner and remove from shares if they were shared
     $stmt = $pdo->prepare("UPDATE tasks SET assigned_to = ? WHERE id = ?");
@@ -260,6 +273,7 @@ if ($action === 'share_task') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $user_id_to_share = $_POST['user_id'] ?? 0;
+    $user_id_to_share = assertUserExists($pdo, $user_id_to_share);
     
     try {
         $stmt = $pdo->prepare("INSERT IGNORE INTO task_shares (task_id, user_id) VALUES (?, ?)");

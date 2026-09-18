@@ -49,10 +49,7 @@ if ($action === 'change_password') {
         jsonResponse(['success' => false, 'error' => 'A nova senha deve ter no mínimo 6 caracteres.']);
     }
 
-    $user_id = $_SESSION['user_id'] ?? null;
-    if (!$user_id) {
-        jsonResponse(['success' => false, 'error' => 'Sessão expirada. Faça login novamente.']);
-    }
+    $user_id = getCurrentUserId();
 
     $pdo = getConnection();
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");

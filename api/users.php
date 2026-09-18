@@ -123,17 +123,19 @@ if ($action === 'update_avatar') {
     
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['avatar'];
+
+        // Limite de 2MB
+        if ($file['size'] > 2 * 1024 * 1024) {
+            jsonResponse(['success' => false, 'message' => 'Imagem muito grande. Máximo 2MB.']);
+        }
+
         $type = mime_content_type($file['tmp_name']);
-        
-        if (strpos($type, 'image/') !== 0) {
-            jsonResponse(['success' => false, 'message' => 'Arquivo inválido. Escolha uma imagem.']);
+        $mimeTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+        if (!isset($mimeTypes[$type])) {
+            jsonResponse(['success' => false, 'message' => 'Arquivo inválido. Envie JPG, PNG, GIF ou WEBP.']);
         }
-        
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        if (!$ext) {
-            $mimeTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
-            $ext = $mimeTypes[$type] ?? 'jpg';
-        }
+        // Extensão vem do tipo real do arquivo, nunca do nome enviado
+        $ext = $mimeTypes[$type];
         
         $filename = 'avatar_' . $id . '_' . time() . '.' . $ext;
         $filepath = '../img/' . $filename;
