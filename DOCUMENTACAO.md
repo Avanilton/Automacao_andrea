@@ -1,6 +1,6 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.3.0  
+**Versão:** 1.4.0  
 **Última atualização:** 18/09/2026
 
 ---
@@ -37,6 +37,10 @@ CONDADO_DB_PORT=5643
 CONDADO_DB_NAME=novacorpconect
 CONDADO_DB_USER=Intelligence
 CONDADO_DB_PASS=sua_senha
+
+# Integracao externa - outro site/banco (esqueleto)
+#EXTERNAL_API_URL=https://outro-site.com/api/atividades
+#EXTERNAL_API_TOKEN=cole_o_token_aqui
 ```
 
 ---
@@ -56,6 +60,7 @@ Automacao_andrea-main/
 │   ├── tickets.php         # Sistema de chamados
 │   ├── condado.php         # Integração com API Condado
 │   ├── sync_condado.php    # Sincronização de dados
+│   ├── external_sync.php   # Esqueleto: replica atividades p/ API externa
 │   ├── test_condado.php    # Teste de conexão
 │   └── settings.json       # Permissões de usuários
 ├── css/                    # Estilos
@@ -96,7 +101,7 @@ Dashboard principal e mais importante do sistema. É uma **SPA (Single Page Appl
 - **Sidebar** com navegação (Tarefas, Kanban, Relatórios, Configurações, Ajuda)
 - **Área principal** onde as views são renderizadas
 - **Modais** para criação de tarefas, distribuição, detalhes, etc.
-- **Versão do sistema** exibida no rodapé da sidebar (v1.3.0)
+- **Versão do sistema** exibida no rodapé da sidebar (v1.4.0)
 
 ---
 
@@ -330,6 +335,19 @@ Script de sincronização (196 linhas):
 
 ---
 
+#### `api/external_sync.php`
+Esqueleto de integração com o outro site/banco (38 linhas):
+
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=push_activity` | POST | Logado (dono/compartilhado/admin) | Envia a "Descrição das Atividades (Atendimento)" em JSON via POST para `EXTERNAL_API_URL` |
+
+- Exige `requireCsrf()` + `canAccessTask()`; sem `EXTERNAL_API_URL`/`EXTERNAL_API_TOKEN` no `.env`, responde `skipped: true` sem quebrar o fluxo local
+- Frontend: `syncActivityToExternal(taskId, content)` em `js/app.js` dispara após `add_update` (fire-and-forget)
+- **TODO:** ajustar nomes dos campos do payload e o esquema de autenticação quando tiver acesso ao outro ambiente
+
+---
+
 #### `api/test_condado.php`
 Script de diagnóstico (22 linhas):
 
@@ -492,6 +510,7 @@ Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware 
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.4.0 | 18/09/2026 | Esqueleto de integração externa: `api/external_sync.php` (push_activity em JSON via cURL), `syncActivityToExternal()` no frontend após add_update, config via `EXTERNAL_API_URL`/`TOKEN` no `.env`, correção XSS na lista de atendimentos |
 | 1.3.0 | 18/09/2026 | Correções high: credenciais via `.env`, erros genéricos ao cliente (log no servidor), CSRF em todo POST, `escapeHtml()` no frontend, `canAccessTask()` anti-IDOR, avatar usa ID da sessão, `sync_condado.php` restrito a admin, `.htaccess` bloqueando testes/debug/`.env` |
 | 1.2.0 | 18/09/2026 | Correções de segurança: middleware de autenticação (auth_middleware.php), todos os endpoints protegidos com requireAuth/requireAdmin, removido fallback admin em tasks/reports/condado, nova action update_profile para autoatendimento, tickets usa dados da sessão, testes automatizados de segurança (test_security.php) |
 | 1.1.0 | 17/09/2026 | Paginacao real 50/50 (limit/offset/search + total/hasMore), kanban progressivo com botao unico Carregar mais, refresh suave de relatorios (skeleton + fade + count-up) |

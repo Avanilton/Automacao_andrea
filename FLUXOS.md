@@ -1,6 +1,6 @@
 # Fluxos do Sistema Cobrança Task
 
-**Versão:** 1.3.0  
+**Versão:** 1.4.0  
 **Última atualização:** 18/09/2026
 
 ---
@@ -243,7 +243,7 @@ Clica "Abrir" (lista) ou card (Kanban) → Modal de detalhes
 ```
 POST api/tasks.php?action=update_status    → mudar status
 POST api/tasks.php?action=update_details  → salvar observações/datas
-POST api/tasks.php?action=add_update      → adicionar atendimento
+POST api/tasks.php?action=add_update      → adicionar atendimento (+ replica externa via syncActivityToExternal)
 POST api/tasks.php?action=reassign        → reatribuir
 POST api/tasks.php?action=share_task      → compartilhar
 POST api/tasks.php?action=unshare_task    → remover compartilhamento
@@ -612,6 +612,7 @@ Acesso manual → sync_condado.php → Passo 1 (boletos) → Passo 2 (clientes) 
 | `api/settings.php` | GET, POST | Logado (get) / Admin (save) | get, save permissões |
 | `api/tickets.php` | GET, POST | Logado (create) / Admin (list/update_status) | create, list, update_status |
 | `api/condado.php` | GET | Logado | fetch_data, fetch_client_details |
+| `api/external_sync.php` | POST | Logado (dono/compartilhado/admin) | push_activity (esqueleto, replica atendimento em JSON) |
 | `api/sync_condado.php` | GET | **Admin** | Sincronização completa |
 
 ---
