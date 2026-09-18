@@ -1,10 +1,7 @@
 <?php
 // api/tasks.php
-require_once 'config.php';
-session_start();
-
-// Simulação de sessão para desenvolvimento
-$user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
+require_once 'auth_middleware.php';
+$user_id = getCurrentUserId();
 
 $action = $_GET['action'] ?? '';
 
@@ -116,6 +113,7 @@ if ($action === 'force_delete') {
 }
 
 if ($action === 'truncate_tasks') {
+    requireAdmin();
     $pdo = getConnection();
     try {
         $pdo->query("DELETE FROM task_shares");

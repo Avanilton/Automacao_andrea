@@ -2322,23 +2322,20 @@ window.saveProfile = async function () {
             return;
         }
 
-        let userStr = localStorage.getItem('cobranca_user');
-        let user = JSON.parse(userStr || '{}');
-
         try {
             const formData = new FormData();
-            formData.append('id', user.id);
             formData.append('name', name);
             formData.append('email', email);
-            formData.append('role', user.role);
 
-            const res = await fetch('api/users.php?action=update', { method: 'POST', body: formData });
+            const res = await fetch('api/users.php?action=update_profile', { method: 'POST', body: formData });
             const data = await res.json();
 
             if (data.success) {
-                user.name = name;
-                user.email = email;
-                localStorage.setItem('cobranca_user', JSON.stringify(user));
+                let userStr2 = localStorage.getItem('cobranca_user');
+                let user2 = JSON.parse(userStr2 || '{}');
+                user2.name = name;
+                user2.email = email;
+                localStorage.setItem('cobranca_user', JSON.stringify(user2));
 
                 const userNameEl = document.getElementById('sidebarUserName');
                 if (userNameEl) userNameEl.textContent = name;
@@ -2371,9 +2368,6 @@ window.sendTicket = async function () {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: user.id,
-                    user_name: user.name,
-                    user_email: user.email,
                     subject: subject,
                     message: message
                 })

@@ -1,10 +1,7 @@
 <?php
 // api/condado.php
-require_once 'config.php';
-session_start();
-
-// Simulação de sessão para desenvolvimento
-$user_id = $_SESSION['user_id'] ?? 1; // 1 = Admin
+require_once 'auth_middleware.php';
+$user_id = getCurrentUserId();
 
 $action = $_GET['action'] ?? 'fetch_data';
 

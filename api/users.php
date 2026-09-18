@@ -1,22 +1,23 @@
 <?php
 // api/users.php
-require_once 'config.php';
-session_start();
+require_once 'auth_middleware.php';
 
 $action = $_GET['action'] ?? '';
 
 if ($action === 'list') {
+    requireAdmin();
     $pdo = getConnection();
     $stmt = $pdo->query("SELECT id, name, email, role, avatar FROM users ORDER BY name");
     jsonResponse(['success' => true, 'users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
 if ($action === 'create') {
+    requireAdmin();
     $pdo = getConnection();
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? 'user';
+    $role = 'user';
 
     if (!$name || !$email || !$password) {
         jsonResponse(['success' => false, 'message' => 'Nome, e-mail e senha são obrigatórios.']);
@@ -41,6 +42,7 @@ if ($action === 'create') {
 }
 
 if ($action === 'update') {
+    requireAdmin();
     $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     $name = trim($_POST['name'] ?? '');
@@ -68,6 +70,7 @@ if ($action === 'update') {
 }
 
 if ($action === 'delete') {
+    requireAdmin();
     $pdo = getConnection();
     $id = $_POST['id'] ?? 0;
     
@@ -84,12 +87,31 @@ if ($action === 'delete') {
     }
 }
 
-if ($action === 'update_avatar') {
+if ($action === 'update_profile') {
+    requireAuth();
     $pdo = getConnection();
-    $id = $_POST['id'] ?? 0;
-    if (!$id && isset($_SESSION['user_id'])) {
-        $id = $_SESSION['user_id'];
+    $id = (int)$_SESSION['user_id'];
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+
+    if (!$name || !$email) {
+        jsonResponse(['success' => false, 'message' => 'Nome e e-mail são obrigatórios.']);
     }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
+        $stmt->execute([$name, $email, $id]);
+        $_SESSION['role'] = $_SESSION['role'] ?? 'user';
+        jsonResponse(['success' => true]);
+    } catch (PDOException $e) {
+        jsonResponse(['success' => false, 'message' => 'Erro ao atualizar perfil.']);
+    }
+}
+
+if ($action === 'update_avatar') {
+    requireAuth();
+    $pdo = getConnection();
+    $id = (int)($_POST['id'] ?? $_SESSION['user_id']);
     
     if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['avatar'];

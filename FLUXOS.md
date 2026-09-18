@@ -1,7 +1,7 @@
 # Fluxos do Sistema Cobrança Task
 
-**Versão:** 1.0.12  
-**Última atualização:** 17/09/2026
+**Versão:** 1.2.0  
+**Última atualização:** 18/09/2026
 
 ---
 
@@ -70,6 +70,8 @@ FormData: email, password
 - Browser: `localStorage.setItem('cobranca_user', JSON.stringify(user))`
 
 **Timer de inatividade:** 10 minutos (`js/auth.js:27-53`). Após idle, faz logout automático.
+
+**Segurança pós-login:** Todos os endpoints da API (exceto `login`) verificam `$_SESSION['user_id']` via `requireAuth()`. Sem sessão válida, retorna HTTP 401.
 
 ---
 
@@ -296,45 +298,61 @@ Content-Type: application/json
 
 ## 7. Gerenciar Usuários
 
-**Objetivo:** Criar, editar e excluir usuários do sistema (apenas admin).
+**Objetivo:** Criar, editar e excluir usuários do sistema (apenas admin). Usuários comuns podem editar apenas seu próprio perfil.
 
-### Criar Usuário
+### Criar Usuário (Admin)
 
 | # | Ação | O que acontece |
 |---|------|----------------|
 | 1 | Clica "+ Novo Usuário" | Abre modal com formulário |
-| 2 | Preenche nome, e-mail, senha, perfil | — |
+| 2 | Preenche nome, e-mail, senha | — |
 | 3 | Clica "Cadastrar" | `saveUser()` envia POST |
-| 4 | — | PHP valida e-mail único, faz `password_hash()`, insere |
+| 4 | — | `requireAdmin()` valida acesso; PHP valida e-mail único, faz `password_hash()`, insere com role='user' |
 | 5 | — | `loadUsers()` recarrega lista |
 
-### Editar Usuário
+### Editar Usuário (Admin)
 
 | # | Ação | O que acontece |
 |---|------|----------------|
 | 1 | Clica "Editar" | `editUser(id)` preenche modal com dados |
-| 2 | Altera campos | — |
+| 2 | Altera campos (incluindo role) | — |
 | 3 | Clica "Cadastrar" | `saveUser()` envia POST com `action=update` |
-| 4 | — | PHP atualiza (com ou sem nova senha) |
+| 4 | — | `requireAdmin()` valida acesso; PHP atualiza (com ou sem nova senha) |
 
-### Excluir Usuário
+### Excluir Usuário (Admin)
 
 | # | Ação | O que acontece |
 |---|------|----------------|
 | 1 | Clica "Excluir" | `deleteUser(id)` pede confirmação |
 | 2 | Confirma | POST para `api/users.php?action=delete` |
-| 3 | — | PHP exclui (usuário ID 1 não pode ser excluído) |
+| 3 | — | `requireAdmin()` valida acesso; PHP exclui (usuário ID 1 não pode ser excluído) |
+
+### Editar Próprio Perfil (Qualquer Usuário Logado)
+
+| # | Ação | O que acontece |
+|---|------|----------------|
+| 1 | Vai em Configurações | Formulário com nome e e-mail |
+| 2 | Altera dados | — |
+| 3 | Clica "Salvar Perfil" | `saveProfile()` envia POST para `update_profile` |
+| 4 | — | `requireAuth()` valida login; PHP atualiza apenas name/email do próprio usuário |
+| 5 | — | **Não é possível alterar o próprio cargo** (role ignore) |
 
 ### Detalhes Técnicos
 
 **Endpoints:**
 ```
-GET  api/users.php?action=list       → listar
-POST api/users.php?action=create     → criar
-POST api/users.php?action=update     → editar
-POST api/users.php?action=delete     → excluir
-POST api/users.php?action=update_avatar → upload de avatar
+GET  api/users.php?action=list            → listar (admin)
+POST api/users.php?action=create          → criar (admin)
+POST api/users.php?action=update          → editar (admin)
+POST api/users.php?action=delete          → excluir (admin)
+POST api/users.php?action=update_profile  → autoatendimento (qualquer logado)
+POST api/users.php?action=update_avatar   → upload de avatar (qualquer logado)
 ```
+
+**Segurança:**
+- `list`, `create`, `update`, `delete` → `requireAdmin()` (HTTP 403 se não for admin)
+- `update_profile`, `update_avatar` → `requireAuth()` (HTTP 401 se não estiver logado)
+- `create` força role='user' — cargo só é definido pelo admin via `update`
 
 ---
 
@@ -439,9 +457,13 @@ GET api/reports.php
 |---|------|----------------|
 | 1 | Vai em Ajuda | Visualiza formulário de chamado |
 | 2 | Preenche assunto e descrição | — |
-| 3 | Clica "Enviar Chamado" | `sendTicket()` envia POST |
-| 4 | — | PHP insere na tabela `tickets` |
-| 5 | — | Feedback com número do chamado |
+| 3 | Clica "Enviar Chamado" | `sendTicket()` envia POST (apenas subject + message) |
+| 4 | — | `requireAuth()` valida login |
+| 5 | — | PHP obtém id, nome e e-mail do usuário **da sessão** (não do request) |
+| 6 | — | PHP insere na tabela `tickets` |
+| 7 | — | Feedback com número do chamado |
+
+> **Segurança:** Os dados do usuário (id, nome, e-mail) são obtidos da sessão PHP no servidor. O cliente envia apenas assunto e descrição.
 
 ### Gerenciar Chamados (Admin)
 
@@ -457,9 +479,9 @@ GET api/reports.php
 
 **Endpoints:**
 ```
-POST api/tickets.php?action=create        → abrir chamado
-GET  api/tickets.php?action=list          → listar (admin vê todos)
-POST api/tickets.php?action=update_status → alterar status
+POST api/tickets.php?action=create        → abrir chamado (logado)
+GET  api/tickets.php?action=list          → listar (admin)
+POST api/tickets.php?action=update_status → alterar status (admin)
 ```
 
 **Status possíveis:** `aberto`, `em_andamento`, `resolvido`
@@ -576,16 +598,16 @@ Acesso manual → sync_condado.php → Passo 1 (boletos) → Passo 2 (clientes) 
 
 ## Resumo de Endpoints
 
-| Endpoint | Métodos | Ações |
-|----------|---------|-------|
-| `api/auth.php` | GET, POST | login, logout, check, change_password |
-| `api/tasks.php` | GET, POST | list, create, update_status, soft_delete, restore, force_delete, truncate_tasks, update_details, add_update, reassign, share_task, unshare_task, import_bulk, list_trash |
-| `api/users.php` | GET, POST | list, get, create, update, delete, update_avatar |
-| `api/reports.php` | GET | Relatórios e rankings |
-| `api/settings.php` | GET, POST | get, save permissões |
-| `api/tickets.php` | GET, POST | create, list, update_status |
-| `api/condado.php` | GET | fetch_data, fetch_client_details, fetch_inadimplentes |
-| `api/sync_condado.php` | GET | Sincronização completa |
+| Endpoint | Métodos | Acesso | Ações |
+|----------|---------|--------|-------|
+| `api/auth.php` | GET, POST | Público (login) / Logado (demais) | login, logout, check, change_password |
+| `api/tasks.php` | GET, POST | Logado (truncate: admin) | list, create, update_status, soft_delete, restore, force_delete, truncate_tasks, update_details, add_update, reassign, share_task, unshare_task, import_bulk, list_trash |
+| `api/users.php` | GET, POST | Admin (list/create/update/delete) / Logado (update_profile/update_avatar) | list, create, update, delete, update_profile, update_avatar |
+| `api/reports.php` | GET | Logado | Relatórios e rankings |
+| `api/settings.php` | GET, POST | Logado (get) / Admin (save) | get, save permissões |
+| `api/tickets.php` | GET, POST | Logado (create) / Admin (list/update_status) | create, list, update_status |
+| `api/condado.php` | GET | Logado | fetch_data, fetch_client_details |
+| `api/sync_condado.php` | GET | — | Sincronização completa |
 
 ---
 

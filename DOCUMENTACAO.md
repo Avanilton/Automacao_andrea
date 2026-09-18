@@ -1,7 +1,7 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.1.0  
-**Última atualização:** 17/09/2026
+**Versão:** 1.2.0  
+**Última atualização:** 18/09/2026
 
 ---
 
@@ -35,6 +35,7 @@ O **Cobrança Task** é um sistema web para gestão de cobranças e tarefas de c
 Automacao_andrea-main/
 ├── api/                    # Backend PHP (APIs)
 │   ├── config.php          # Configurações do banco de dados
+│   ├── auth_middleware.php  # Middleware de autenticação e autorização
 │   ├── auth.php            # Autenticação (login/logout)
 │   ├── tasks.php           # CRUD de tarefas
 │   ├── users.php           # Gerenciamento de usuários
@@ -188,6 +189,18 @@ Configurações e bootstrap do sistema (81 linhas):
 
 ---
 
+#### `api/auth_middleware.php`
+Middleware de autenticação e autorização (30 linhas):
+
+- `requireAuth()` — bloqueia acesso se não houver sessão (HTTP 401)
+- `requireAdmin()` — bloqueia acesso se o usuário não for admin (HTTP 403)
+- `getCurrentUserId()` — retorna o ID do usuário logado (da sessão)
+- `getCurrentUserRole()` — retorna o papel do usuário logado
+
+> **Todos os endpoints protegidos devem incluir este arquivo no início.**
+
+---
+
 #### `api/auth.php`
 API de autenticação (73 linhas):
 
@@ -200,38 +213,43 @@ API de autenticação (73 linhas):
 ---
 
 #### `api/tasks.php`
-API de tarefas (254 linhas):
+API de tarefas (285 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=list` | GET | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
-| `?action=get` | GET | Busca uma tarefa por ID (usado ao abrir detalhe fora da pagina) |
-| `?action=create` | POST | Cria tarefas em lote |
-| `?action=update_status` | POST | Atualiza status (todo/in_progress/done) |
-| `?action=soft_delete` | POST | Move tarefa para lixeira |
-| `?action=restore` | POST | Restaura tarefa da lixeira |
-| `?action=force_delete` | POST | Exclui tarefa permanentemente |
-| `?action=truncate_tasks` | POST | Limpa todas as tarefas |
-| `?action=update_details` | POST | Atualiza detalhes (datas, observações) |
-| `?action=share_task` | POST | Compartilha tarefa com outro usuário |
-| `?action=unshare_task` | POST | Remove compartilhamento |
-| `?action=reassign` | POST | Reatribui tarefa para outro usuário |
-| `?action=import_bulk` | POST | Importa tarefas em lote (via planilha) |
-| `?action=list_trash` | GET | Lista tarefas excluídas |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=list` | GET | Logado | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
+| `?action=get` | GET | Logado | Busca uma tarefa por ID |
+| `?action=create` | POST | Logado | Cria tarefas em lote |
+| `?action=update_status` | POST | Logado | Atualiza status (todo/in_progress/done) |
+| `?action=soft_delete` | POST | Logado | Move tarefa para lixeira |
+| `?action=restore` | POST | Logado | Restaura tarefa da lixeira |
+| `?action=force_delete` | POST | Logado | Exclui tarefa permanentemente |
+| `?action=truncate_tasks` | POST | **Admin** | Limpa todas as tarefas |
+| `?action=update_details` | POST | Logado | Atualiza detalhes (datas, observações) |
+| `?action=add_update` | POST | Logado | Adiciona atendimento |
+| `?action=reassign` | POST | Logado | Reatribui tarefa para outro usuário |
+| `?action=share_task` | POST | Logado | Compartilha tarefa com outro usuário |
+| `?action=unshare_task` | POST | Logado | Remove compartilhamento |
+| `?action=import_bulk` | POST | Logado | Importa tarefas em lote (via planilha) |
+| `?action=list_trash` | GET | Logado | Lista tarefas excluídas |
+
+> **Segurança:** Todos os endpoints exigem sessão válida. `truncate_tasks` é restrito a admin.
 
 ---
 
 #### `api/users.php`
-API de usuários (130 linhas):
+API de usuários (145 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=list` | GET | Lista todos os usuários |
-| `?action=get` | GET | Busca usuário por ID |
-| `?action=create` | POST | Cria novo usuário |
-| `?action=update` | POST | Atualiza dados do usuário |
-| `?action=delete` | POST | Exclui usuário |
-| `?action=update_avatar` | POST | Atualiza foto do perfil |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=list` | GET | Admin | Lista todos os usuários |
+| `?action=create` | POST | Admin | Cria novo usuário (role sempre `user`) |
+| `?action=update` | POST | Admin | Atualiza dados do usuário (incluindo role) |
+| `?action=delete` | POST | Admin | Exclui usuário (ID 1 protegido) |
+| `?action=update_profile` | POST | Qualquer logado | Atualiza próprio nome/e-mail (não altera role) |
+| `?action=update_avatar` | POST | Qualquer logado | Atualiza foto do perfil |
+
+> **Segurança:** As actions `list`, `create`, `update` e `delete` exigem sessão de admin. A action `update_profile` permite que o próprio usuário edite seus dados sem poder alterar seu cargo.
 
 ---
 
@@ -248,21 +266,23 @@ API de relatórios (63 linhas):
 #### `api/settings.php`
 API de configurações (31 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=get` | GET | Lê permissões do `settings.json` |
-| `?action=save` | POST | Salva permissões no `settings.json` |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=get` | GET | Logado | Lê permissões do `settings.json` |
+| `?action=save` | POST | **Admin** | Salva permissões no `settings.json` |
 
 ---
 
 #### `api/tickets.php`
 API de chamados (58 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=create` | POST | Abre novo chamado |
-| `?action=list` | GET | Lista chamados (admin vê todos) |
-| `?action=update_status` | POST | Atualiza status (aberto/em_andamento/resolvido) |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=create` | POST | Logado | Abre novo chamado (dados do usuário vêm da sessão) |
+| `?action=list` | GET | **Admin** | Lista chamados |
+| `?action=update_status` | POST | **Admin** | Atualiza status (aberto/em_andamento/resolvido) |
+
+> **Segurança:** Os dados do usuário (id, nome, e-mail) são obtidos da sessão no servidor, não do cliente.
 
 ---
 
@@ -405,12 +425,40 @@ Schema do banco `bvgarantia_cobrancatask`:
 
 > Os scripts de desenvolvimento na raiz também contêm credenciais de banco de dados em texto plano.
 
+### Modelo de Autenticação
+
+Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware `auth_middleware.php` fornece:
+
+| Função | HTTP Status | Quando aplicado |
+|--------|-------------|-----------------|
+| `requireAuth()` | 401 | Qualquer endpoint que exija login |
+| `requireAdmin()` | 403 | Endpoints restritos a administradores |
+
+### Restrições por Endpoint
+
+| Endpoint | Acesso | Observação |
+|----------|--------|------------|
+| `auth.php?action=login` | Público | Único endpoint sem autenticação |
+| `users.php?action=list/create/update/delete` | Admin | Gerenciamento de usuários |
+| `users.php?action=update_profile` | Qualquer logado | Usuário edita apenas seu próprio nome/e-mail |
+| `tasks.php?action=truncate_tasks` | Admin | Limpeza total de dados |
+| `settings.php?action=save` | Admin | Alteração de permissões do sistema |
+| `tickets.php?action=list/update_status` | Admin | Gerenciamento de chamados |
+| `reports.php` | Logado | Relatórios filtrados por papel |
+
+### Proteções Adicionais
+
+- **Role ignore no frontend:** O `saveProfile()` envia apenas nome/e-mail; o cargo é definido exclusivamente pelo admin
+- **Dados de sessão:** Chamados (`tickets`) obtêm dados do usuário da sessão PHP, não do request do cliente
+- **Fallback admin removido:** Todos os endpoints que usavam `$_SESSION['user_id'] ?? 1` agora usam `getCurrentUserId()` que bloqueia sem sessão
+
 ---
 
 ## Controle de Versão
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.2.0 | 18/09/2026 | Correções de segurança: middleware de autenticação (auth_middleware.php), todos os endpoints protegidos com requireAuth/requireAdmin, removido fallback admin em tasks/reports/condado, nova action update_profile para autoatendimento, tickets usa dados da sessão, testes automatizados de segurança (test_security.php) |
 | 1.1.0 | 17/09/2026 | Paginacao real 50/50 (limit/offset/search + total/hasMore), kanban progressivo com botao unico Carregar mais, refresh suave de relatorios (skeleton + fade + count-up) |
 | 1.0.12 | 17/09/2026 | Ranking Top 5 com modal, versão no rodapé da sidebar |
 | 1.0.11 | 16/09/2026 | Paginação de tarefas (50/página), carregamento progressivo Kanban |
