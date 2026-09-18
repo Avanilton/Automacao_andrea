@@ -2067,7 +2067,7 @@ if (btnSaveUpdate) {
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
                     <strong>Você</strong> - ${new Date().toLocaleString()}
                 </div>
-                <p style="font-size: 0.9rem;">${content}</p>
+                <p style="font-size: 0.9rem;">${escapeHtml(content)}</p>
             `;
         updatesList.prepend(newUpdate);
         textInput.value = '';
@@ -2083,11 +2083,38 @@ if (btnSaveUpdate) {
                 method: 'POST',
                 body: formData
             });
+
+            // ESQUELETO: replica a descrição da atividade para o sistema externo (não bloqueia a UI)
+            syncActivityToExternal(window.currentOpenTaskId, content);
         } catch (e) {
             console.log('API não conectada, registrado apenas visualmente.', e);
         }
     };
 } // <--- ESTA CHAVE ESTAVA FALTANDO!
+
+// ESQUELETO: envia a "Descrição das Atividades (Atendimento)" em JSON para o
+// outro site/banco via api/external_sync.php. Configure EXTERNAL_API_URL e
+// EXTERNAL_API_TOKEN no .env quando tiver acesso ao outro ambiente.
+window.syncActivityToExternal = async function (taskId, content) {
+    try {
+        const formData = new FormData();
+        formData.append('task_id', taskId);
+        formData.append('content', content);
+
+        const res = await fetch('api/external_sync.php?action=push_activity', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.skipped) {
+            console.log('Integração externa ainda não configurada, atividade salva só localmente.');
+        } else if (!data.success) {
+            console.warn('Falha ao replicar atividade no sistema externo:', data.error);
+        }
+    } catch (e) {
+        console.warn('Sistema externo inalcançável, atividade salva só localmente.', e);
+    }
+};
 
 // 4. Excluir Tarefa
 // (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
