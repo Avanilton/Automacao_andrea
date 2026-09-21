@@ -24,6 +24,11 @@ if ($action === 'create') {
         jsonResponse(['success' => false, 'message' => 'Nome, e-mail e senha são obrigatórios.']);
     }
 
+    // S4f: valida formato do e-mail também na criação
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(['success' => false, 'message' => 'E-mail inválido.'], 400);
+    }
+
     // Verificar se email já existe
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
@@ -46,7 +51,7 @@ if ($action === 'update') {
     requireAdmin();
     requireCsrf();
     $pdo = getConnection();
-    $id = $_POST['id'] ?? 0;
+    $id = (int)($_POST['id'] ?? 0);
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -54,6 +59,28 @@ if ($action === 'update') {
 
     if (!$id || !$name || !$email) {
         jsonResponse(['success' => false, 'message' => 'ID, Nome e e-mail são obrigatórios.']);
+    }
+
+    // S4a: e-mail precisa ter formato válido
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(['success' => false, 'message' => 'E-mail inválido.'], 400);
+    }
+
+    // S4b: cargo só pode ser um dos dois conhecidos
+    if (!in_array($role, ['admin', 'user'], true)) {
+        jsonResponse(['success' => false, 'message' => 'Cargo inválido.'], 400);
+    }
+
+    // S4c: nunca permite rebaixar o admin principal (ID 1)
+    if ($id === 1 && $role !== 'admin') {
+        jsonResponse(['success' => false, 'message' => 'O administrador principal não pode ser rebaixado.'], 403);
+    }
+
+    // S4d: e-mail já usado por OUTRO usuário? bloqueia
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id <> ?");
+    $stmt->execute([$email, $id]);
+    if ($stmt->fetch()) {
+        jsonResponse(['success' => false, 'message' => 'Este e-mail já está em uso por outro usuário.'], 409);
     }
 
     try {
@@ -100,6 +127,16 @@ if ($action === 'update_profile') {
 
     if (!$name || !$email) {
         jsonResponse(['success' => false, 'message' => 'Nome e e-mail são obrigatórios.']);
+    }
+
+    // S4e: mesmo na autoedição, valida formato e duplicidade
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(['success' => false, 'message' => 'E-mail inválido.'], 400);
+    }
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id <> ?");
+    $stmt->execute([$email, $id]);
+    if ($stmt->fetch()) {
+        jsonResponse(['success' => false, 'message' => 'Este e-mail já está em uso por outro usuário.'], 409);
     }
 
     try {

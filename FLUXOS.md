@@ -1,7 +1,7 @@
 # Fluxos do Sistema Cobrança Task
 
-**Versão:** 1.4.0  
-**Última atualização:** 18/09/2026
+**Versão:** 1.5.0  
+**Última atualização:** 21/09/2026
 
 ---
 
@@ -40,9 +40,15 @@ index.html → login.html → dashboard.html
 | 2 | Preenche e-mail e senha | — |
 | 3 | Clica "Entrar" | — |
 | 4 | — | JS envia POST para `api/auth.php?action=login` |
-| 5 | — | PHP valida com `password_verify()`, regenera ID da sessão, retorna dados do usuário + `csrf_token` |
+| 5 | — | PHP checa rate-limit (5 erros/15min = 429 por 5min), valida com `password_verify()`, regenera ID da sessão + CSRF novo, retorna dados do usuário + `csrf_token` |
 | 6 | — | JS salva sessão no `localStorage` (`cobranca_user` + `cobranca_csrf`) |
 | 7 | — | Redireciona para `dashboard.html` |
+
+### Checar sessão e logout (v1.5.0)
+
+- `GET api/auth.php?action=check` → `{success:true, user:{id, role}}` se vale; `401` se expirada (inclui timeout 10min).
+- Logout agora via `POST api/auth.php?action=logout` com `X-CSRF-Token` (GET antigo ainda aceito); limpa sessão + cookie `PHPSESSID`.
+- Cookie de sessão: `httponly` + `samesite=Lax` + `secure` em HTTPS.
 
 ### CSRF nos POSTs seguintes
 

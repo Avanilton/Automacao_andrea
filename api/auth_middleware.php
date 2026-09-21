@@ -1,6 +1,15 @@
 <?php
 require_once 'config.php';
+// S9: cookie de sessão mais seguro (não acessível via JS, só enviado no mesmo site)
 if (session_status() === PHP_SESSION_NONE) {
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $isHttps, // true em produção HTTPS, false no localhost HTTP
+        'httponly' => true,   // JS não lê o PHPSESSID (anti-XSS)
+        'samesite' => 'Lax',  // navegador só envia em navegação normal (anti-CSRF)
+    ]);
     session_start();
 }
 

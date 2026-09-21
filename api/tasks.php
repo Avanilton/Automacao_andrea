@@ -26,6 +26,12 @@ if ($action === 'list') {
         $like = '%' . $search . '%';
         $params = [$like, $like, $like];
     }
+    // S1: não-admin só vê o que é seu (dono ou compartilhado), igual ao reports.php/list_trash
+    if (getCurrentUserRole() !== 'admin') {
+        $baseWhere .= " AND (assigned_to = ? OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?))";
+        $params[] = $user_id;
+        $params[] = $user_id;
+    }
     // Total (mesmo filtro) para o frontend saber se há mais
     $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM tasks $baseWhere");
     $stmtCount->execute($params);
@@ -224,6 +230,12 @@ if ($action === 'update_status') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $status = $_POST['status'] ?? '';
+
+    // S2: só aceita os 3 status que o Kanban conhece
+    $allowedStatuses = ['todo', 'in_progress', 'done'];
+    if (!in_array($status, $allowedStatuses, true)) {
+        jsonResponse(['success' => false, 'error' => 'Status inválido.'], 400);
+    }
     
     $stmt = $pdo->prepare("UPDATE tasks SET status = ? WHERE id = ?");
     $stmt->execute([$status, $task_id]);
