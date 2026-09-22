@@ -23,6 +23,19 @@ if ($action === 'create') {
         jsonResponse(['success' => false, 'message' => 'Todos os campos são obrigatórios.']);
     }
 
+    // S18: trava spam — tamanho máximo + ritmo máximo
+    if (mb_strlen($subject) > 150) {
+        jsonResponse(['success' => false, 'message' => 'Assunto muito longo (máx. 150 caracteres).'], 400);
+    }
+    if (mb_strlen($message) > 2000) {
+        jsonResponse(['success' => false, 'message' => 'Mensagem muito longa (máx. 2000 caracteres).'], 400);
+    }
+    $stmtRate = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE user_id = ? AND created_at > (NOW() - INTERVAL 1 HOUR)");
+    $stmtRate->execute([$user_id]);
+    if ((int)$stmtRate->fetchColumn() >= 5) {
+        jsonResponse(['success' => false, 'message' => 'Limite de 5 chamados por hora. Tente mais tarde.'], 429);
+    }
+
     try {
         $stmt = $pdo->prepare("INSERT INTO tickets (user_id, user_name, user_email, subject, message) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$user_id, $user_name, $user_email, $subject, $message]);

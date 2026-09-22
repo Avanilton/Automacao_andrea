@@ -7,7 +7,7 @@ while (ob_get_level()) {
 }
 
 header('Content-Type: text/html; charset=utf-8');
-session_start();
+// auth_middleware.php já deu session_start(); não abrir outra aqui
 requireAdmin();
 
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
@@ -81,7 +81,8 @@ try {
         // Busca os imóveis para memória
         $stmtImoveis = $pdoCondado->query("SELECT idImovel, idEmpresa, nomeFantasia FROM tbimovel");
         if (!$stmtImoveis) {
-            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbimovel: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+            error_log('[CobrancaTask] sync_condado tbimovel: ' . print_r($pdoCondado->errorInfo(), true));
+            die("<h3 style='color:red;'>Erro ao ler dados de imóveis. Verifique os logs do servidor.</h3>");
         }
         
         $imoveis = [];
@@ -100,7 +101,8 @@ try {
         // Busca blocos para memória (simulando MIN)
         $stmtBlocos = $pdoCondado->query("SELECT idEmpresa, idImovel, bloco FROM tbbloco");
         if (!$stmtBlocos) {
-            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbbloco: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+            error_log('[CobrancaTask] sync_condado tbbloco: ' . print_r($pdoCondado->errorInfo(), true));
+            die("<h3 style='color:red;'>Erro ao ler dados de blocos. Verifique os logs do servidor.</h3>");
         }
         $blocos = [];
         while ($row = $stmtBlocos->fetch(PDO::FETCH_ASSOC)) {
@@ -118,7 +120,8 @@ try {
         // Busca situações para memória (simulando MIN)
         $stmtSituacoes = $pdoCondado->query("SELECT idEmpresa, situacao FROM tbsituacao");
         if (!$stmtSituacoes) {
-            die("<h3 style='color:red;'>ERRO CRÍTICO: Falha ao ler tbsituacao: " . print_r($pdoCondado->errorInfo(), true) . "</h3>");
+            error_log('[CobrancaTask] sync_condado tbsituacao: ' . print_r($pdoCondado->errorInfo(), true));
+            die("<h3 style='color:red;'>Erro ao ler dados de situações. Verifique os logs do servidor.</h3>");
         }
         $situacoes = [];
         while ($row = $stmtSituacoes->fetch(PDO::FETCH_ASSOC)) {

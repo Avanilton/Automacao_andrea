@@ -152,6 +152,11 @@ if ($action === 'create') {
     if(!isset($data['tasks']) || !isset($data['assigned_to'])) {
         jsonResponse(['error' => 'Dados inválidos'], 400);
     }
+
+    // S17: teto anti-DoS — ninguém cria 10 mil de uma vez e estoura timeout/memória
+    if (!is_array($data['tasks']) || count($data['tasks']) < 1 || count($data['tasks']) > 500) {
+        jsonResponse(['success' => false, 'error' => 'Envie entre 1 e 500 tarefas por vez.'], 400);
+    }
     
     $assigned_to = $data['assigned_to'];
     
@@ -189,6 +194,11 @@ if ($action === 'import_bulk') {
     
     if(!isset($data['tasks']) || !is_array($data['tasks'])) {
         jsonResponse(['error' => 'Dados inválidos'], 400);
+    }
+
+    // S17: mesmo teto na importação via planilha
+    if (count($data['tasks']) < 1 || count($data['tasks']) > 500) {
+        jsonResponse(['success' => false, 'error' => 'Envie entre 1 e 500 tarefas por vez.'], 400);
     }
     
     $pdo = getConnection();

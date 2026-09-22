@@ -1,1 +1,9 @@
-{"view_tarefas":true,"create_task":false,"distribute_task":false,"view_kanban":true,"view_reports":false,"view_trash":false,"view_config":false}
+{
+    "view_tarefas": true,
+    "create_task": false,
+    "distribute_task": false,
+    "view_kanban": true,
+    "view_reports": false,
+    "view_trash": false,
+    "view_config": false
+}
