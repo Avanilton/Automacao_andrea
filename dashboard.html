@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Cobrança</title>
     <link rel="icon" type="image/jpeg" href="./favicon.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=11">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -325,6 +327,21 @@
                     <div class="task-section">
                         <h4>Descrição das Atividades (Atendimento)</h4>
                         <div class="task-update-form" style="display: flex; flex-direction: column; gap: 10px;">
+                            <select id="taskDevolutiva" class="form-control">
+                                <option value="">Selecione a devolutiva...</option>
+                                <option>Não atendeu</option>
+                                <option>Atendeu e desligou</option>
+                                <option>Falecido</option>
+                                <option>Número inválido</option>
+                                <option>Caixa postal</option>
+                                <option>Retornar depois</option>
+                                <option>Recado com terceiro</option>
+                                <option>Negociação em andamento</option>
+                                <option>Promessa de pagamento</option>
+                                <option>Acordo fechado</option>
+                                <option>Pagamento efetuado</option>
+                                <option>Sem interesse</option>
+                            </select>
                             <textarea id="taskUpdateText" class="form-control" rows="3"
                                 placeholder="O que foi feito no atendimento?"></textarea>
                             <button id="btnSaveUpdate" class="btn-primary" style="align-self: flex-end;">Registrar
@@ -394,10 +411,10 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="js/theme.js?v=7"></script>
-    <script src="js/auth.js?v=7"></script>
-    <script src="js/app.js?v=10"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script defer src="js/theme.js?v=7"></script>
+    <script defer src="js/auth.js?v=7"></script>
+    <script defer src="js/app.js?v=10"></script>
 </body>
 
 </html>

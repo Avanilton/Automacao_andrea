@@ -1,7 +1,7 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.5.0  
-**Última atualização:** 21/09/2026
+**Versão:** 1.5.1  
+**Última atualização:** 24/09/2026
 
 ---
 
@@ -159,8 +159,10 @@ Arquivo principal da aplicação (2563 linhas). Contém toda a lógica do fronte
 
 **Relatórios:**
 - `loadRelatorios()` — carrega dados dos relatórios
-- `renderRankingRow()` — renderiza linhas de ranking
-- `openRankingModal()` — abre modal com ranking completo
+- `renderRankingBar(name, total, percent, index, color)` — padrão único dos 3 rankings (posição + nome + `%` + `(total)` + barra de progresso, com `escapeHtml`)
+- `renderRankingRow()` — wrapper legado, delega para `renderRankingBar`
+- `getRankingName()` — retorna `atendente || imovel || devolutiva`
+- `openRankingModal()` — abre modal com ranking completo no mesmo padrão barra + % (título escapado, tolera lista nula)
 
 **Configurações:**
 - `saveProfile()` — salva dados do perfil
@@ -281,11 +283,13 @@ API de usuários (145 linhas):
 ---
 
 #### `api/reports.php`
-API de relatórios (63 linhas):
+API de relatórios (90 linhas):
 
 - Retorna total de atendimentos
-- Ranking de atendentes (top 5 + lista completa)
-- Ranking de imóveis (top 5)
+- Ranking de atendentes (top 5 + lista completa + `percent`)
+- Ranking de imóveis (top 5 + lista completa + `percent`; sem `LIMIT` no SQL, corte via `array_slice`)
+- Ranking de devolutivas (top 5 + lista completa + `percent`)
+- Padrão único: todo ranking retorna `{top5, *_all}` com `total` + `percent`; frontend desenha barra + % + botão "Ver todos" nos 3
 - Filtra dados por papel do usuário (admin vê tudo, usuário só as suas)
 
 ---
@@ -386,7 +390,7 @@ Schema do banco `bvgarantia_cobrancatask`:
 | `users` | Usuários do sistema (id, name, email, password, role, avatar) |
 | `tasks` | Tarefas de cobrança (property_name, client_name, status, assigned_to, etc.) |
 | `task_shares` | Compartilhamento de tarefas entre usuários |
-| `task_updates` | Histórico de atendimentos de cada tarefa |
+| `task_updates` | Histórico de atendimentos de cada tarefa (inclui `devolutiva` VARCHAR(100), ver `migrate_devolutiva.php`) |
 | `tickets` | Chamados de suporte |
 | `cache_imoveis` | Cache de imóveis do Condado |
 | `cache_clientes` | Cache de clientes do Condado |
@@ -511,6 +515,7 @@ Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware 
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.5.1 | 24/09/2026 | Padronização dos 3 rankings de relatórios (barra + % + Ver todos): `reports.php` com `percent` nos 3 + retorno `{top5, *_all}` (Imóveis sem `LIMIT`, corte via `array_slice`); `app.js` com `renderRankingBar`/`getRankingName` únicos, `openRankingModal` no mesmo padrão (título escapado, tolera lista nula), 3 cards gêmeos com scroll 320px; `task_updates.devolutiva` (whitelist de 12 valores em `tasks.php`, select em `dashboard.html`, coluna em `database.sql` + `migrate_devolutiva.php`) |
 | 1.5.0 | 21/09/2026 | Segurança lista/escrita: `tasks:list` filtra por dono/compartilhado p/ não-admin, `update_status` com whitelist (todo/in_progress/done), `settings:save` valida JSON + 7 chaves booleanas, `users:create/update/update_profile` validam formato e duplicidade de e-mail + whitelist de role + proteção ID 1; Auth/sessão: rate-limit de login (5 erros/15min = bloqueio 5min + 429 + sleep 1s), nova `auth:check`, login regenera CSRF e grava `last_activity`, `logout` via POST+CSRF com limpeza total (sessão+cookie), cookie `httponly`+`samesite=Lax`+`secure` em HTTPS, frontend `auth.js` com logout POST |
 | 1.4.1 | 18/09/2026 | `list_trash` filtra por dono/compartilhado p/ não-admin, avatar por MIME real + limite 2MB, `assertUserExists` em create/import/reassign/share, timeout de inatividade (10min) no servidor via `last_activity`, `change_password` usa `getCurrentUserId` |
 | 1.4.0 | 18/09/2026 | Esqueleto de integração externa: `api/external_sync.php` (push_activity em JSON via cURL), `syncActivityToExternal()` no frontend após add_update, config via `EXTERNAL_API_URL`/`TOKEN` no `.env`, correção XSS na lista de atendimentos |

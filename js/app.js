@@ -712,9 +712,9 @@ window.loadUsers = async function () {
         if (data && data.success && data.users.length > 0) {
             window.currentLoadedUsers = data.users;
             if (tbody) {
-                tbody.innerHTML = '';
+                let html = '';
                 data.users.forEach(u => {
-                    tbody.innerHTML += `
+                    html += `
                             <tr>
                                 <td>${escapeHtml(u.name)}</td>
                                 <td>${escapeHtml(u.email)}</td>
@@ -726,6 +726,7 @@ window.loadUsers = async function () {
                             </tr>
                         `;
                 });
+                tbody.innerHTML = html;
             }
         } else {
             if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum usuário encontrado.</td></tr>';
@@ -902,6 +903,7 @@ window.loadLixeira = async function () {
         }
 
         tbody.innerHTML = '';
+        const frag = document.createDocumentFragment();
         data.tasks.forEach(item => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -913,8 +915,9 @@ window.loadLixeira = async function () {
                         <button class="btn-secondary btn-sm danger-text" onclick="forceDeleteTrash(${item.id})">Excluir Permanente</button>
                     </td>
                 `;
-            tbody.appendChild(tr);
+            frag.appendChild(tr);
         });
+        tbody.appendChild(frag);
     } catch (e) {
         console.error(e);
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar lixeira.</td></tr>';
@@ -1282,6 +1285,7 @@ window.dropCard = async function (ev) {
 window.currentLoadedTasks = [];
 window.tasksPagination = { limit: 50, offset: 0, total: 0, hasMore: true, loading: false, search: '' };
 window._tarefasSearchTimer = null;
+window._tarefasAbort = null;
 
 function updateTarefasFooter() {
     const counter = document.getElementById('tarefasCounter');
@@ -1317,8 +1321,10 @@ window.loadTarefas = async function (reset = true) {
 
     try {
         const p = window.tasksPagination;
+        if (window._tarefasAbort) window._tarefasAbort.abort();
+        window._tarefasAbort = new AbortController();
         const qs = `api/tasks.php?action=list&limit=${p.limit}&offset=${p.offset}&search=${encodeURIComponent(p.search)}&_t=` + new Date().getTime();
-        const res = await fetch(qs);
+        const res = await fetch(qs, { signal: window._tarefasAbort.signal });
         const data = await res.json();
         if (data && data.success) {
             const page = data.tasks || [];
@@ -1337,6 +1343,7 @@ window.loadTarefas = async function (reset = true) {
             }
         }
     } catch (e) {
+        if (e && e.name === 'AbortError') return;
         console.error("Erro no fetch de loadTarefas", e);
         if (reset) window.currentLoadedTasks = [];
     } finally {
@@ -2052,8 +2059,16 @@ const btnSaveUpdate = document.getElementById('btnSaveUpdate');
 if (btnSaveUpdate) {
     btnSaveUpdate.onclick = async () => {
         const textInput = document.getElementById('taskUpdateText');
+        const devolSelect = document.getElementById('taskDevolutiva');
         const content = textInput.value.trim();
+        const devolutiva = devolSelect ? devolSelect.value : '';
         if (!content) return;
+        if (!devolutiva) {
+            if (typeof showToast === 'function') showToast('Selecione a devolutiva do atendimento.', 'error');
+            else alert('Selecione a devolutiva do atendimento.');
+            if (devolSelect) devolSelect.focus();
+            return;
+        }
 
         // Render local mockup list
         const updatesList = document.getElementById('taskUpdatesList');
@@ -2066,11 +2081,13 @@ if (btnSaveUpdate) {
         newUpdate.innerHTML = `
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
                     <strong>Você</strong> - ${new Date().toLocaleString()}
+                    <span class="label" style="background:var(--primary); margin-left:6px;">${escapeHtml(devolutiva)}</span>
                 </div>
                 <p style="font-size: 0.9rem;">${escapeHtml(content)}</p>
             `;
         updatesList.prepend(newUpdate);
         textInput.value = '';
+        if (devolSelect) devolSelect.value = '';
         window.logActivity(`Registrou um novo atendimento (nota)`);
 
         // Try to hit API if real ID is available (Mocked ID 1 here for demo)
@@ -2078,6 +2095,7 @@ if (btnSaveUpdate) {
             const formData = new FormData();
             formData.append('task_id', window.currentOpenTaskId);
             formData.append('content', content);
+            formData.append('devolutiva', devolutiva);
 
             await fetch('api/tasks.php?action=add_update', {
                 method: 'POST',
@@ -2120,20 +2138,38 @@ window.syncActivityToExternal = async function (taskId, content) {
 // (O evento de exclusão foi movido para openTaskDetails para obter acesso ao taskId)
 
 window.renderRankingRow = function (item, index, color) {
-    const name = item.atendente || item.imovel || 'Desconhecido';
-    return `<div style="display:flex; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
-        <span><strong>#${index + 1}</strong> ${name}</span>
-        <span class="label" style="background:${color}">${item.total}</span>
+    // Legado: mantido por compatibilidade, agora delega para o padrão barra + %.
+    const name = item.atendente || item.imovel || item.devolutiva || 'Desconhecido';
+    return window.renderRankingBar(name, item.total, item.percent, index, color);
+};
+
+window.renderRankingBar = function (name, total, percent, index, color) {
+    const safeName = escapeHtml(name || 'Desconhecido');
+    const pct = parseFloat(percent) || 0;
+    const safeTotal = escapeHtml(String(total ?? 0));
+    return `<div style="margin-bottom: 12px;">
+        <div style="display:flex; justify-content:space-between; font-size: 0.9rem; margin-bottom: 4px;">
+            <span><strong>#${index + 1}</strong> ${safeName}</span>
+            <span><strong>${pct}%</strong> <span class="text-muted">(${safeTotal})</span></span>
+        </div>
+        <div style="background: var(--border); height: 8px; border-radius: 4px; overflow: hidden;">
+            <div style="width: ${pct}%; height: 100%; background: ${color}; transition: width 0.3s ease;"></div>
+        </div>
     </div>`;
+};
+
+window.getRankingName = function (item) {
+    return item.atendente || item.imovel || item.devolutiva || 'Desconhecido';
 };
 
 window.openRankingModal = function (title, items, color) {
     const modal = document.getElementById('modalOverlay');
     if (!modal) return;
 
+    const safeTitle = escapeHtml(title);
     let rowsHtml = '';
-    items.forEach((item, i) => {
-        rowsHtml += window.renderRankingRow(item, i, color);
+    (items || []).forEach((item, i) => {
+        rowsHtml += window.renderRankingBar(window.getRankingName(item), item.total, item.percent, i, color);
     });
 
     const existing = document.getElementById('rankingModal');
@@ -2145,7 +2181,7 @@ window.openRankingModal = function (title, items, color) {
     modalDiv.style.cssText = 'max-width: 500px; max-height: 80vh; display: flex; flex-direction: column;';
     modalDiv.innerHTML = `
         <div class="modal-header">
-            <h3>${title} (${items.length})</h3>
+            <h3>${safeTitle} (${(items || []).length})</h3>
             <button class="close-modal icon-btn" onclick="document.getElementById('rankingModal').remove(); document.getElementById('modalOverlay').classList.add('hidden');">&times;</button>
         </div>
         <div class="modal-body" style="overflow-y: auto; flex: 1; max-height: 60vh;">
@@ -2187,54 +2223,71 @@ window.loadRelatorios = async function () {
         if (data.success) {
             const total = data.data.total_atendimentos || 0;
             const atendentes = data.data.ranking_atendentes || [];
-            const atendentesAll = data.data.ranking_atendentes_all || [];
+            const atendentesAll = data.data.ranking_atendentes_all || atendentes;
             const imoveis = data.data.ranking_imoveis || [];
+            const imoveisAll = data.data.ranking_imoveis_all || imoveis;
+            const devolutivas = data.data.ranking_devolutivas || [];
+            const devolutivasAll = data.data.ranking_devolutivas_all || devolutivas;
 
-            let atendentesHtml = '';
-            if (atendentes.length === 0) {
-                atendentesHtml = '<p class="text-muted">Nenhum dado.</p>';
-            } else {
-                atendentes.forEach((a, i) => {
-                    atendentesHtml += window.renderRankingRow(a, i, 'var(--primary)');
-                });
-            }
+            const buildRankingHtml = (items, color, emptyMsg) => {
+                if (!items || items.length === 0) return `<p class="text-muted">${emptyMsg}</p>`;
+                return items.map((item, i) =>
+                    window.renderRankingBar(window.getRankingName(item), item.total, item.percent, i, color)
+                ).join('');
+            };
 
-            let imoveisHtml = '';
-            if (imoveis.length === 0) {
-                imoveisHtml = '<p class="text-muted">Nenhum dado.</p>';
-            } else {
-                imoveis.forEach((im, i) => {
-                    imoveisHtml += window.renderRankingRow(im, i, 'var(--secondary)');
-                });
-            }
+            const atendentesHtml = buildRankingHtml(atendentes, 'var(--primary)', 'Nenhum dado.');
+            const imoveisHtml = buildRankingHtml(imoveis, 'var(--secondary)', 'Nenhum dado.');
+            const devolutivasHtml = buildRankingHtml(devolutivas, 'var(--accent)', 'Nenhuma devolutiva registrada.');
 
-            const verTodosBtn = atendentesAll.length > 5
+            const verTodosAtendentesBtn = atendentesAll.length > 5
                 ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Atendentes', window._allAtendentes, 'var(--primary)')">Ver todos (${atendentesAll.length})</button>`
+                : '';
+            const verTodosImoveisBtn = imoveisAll.length > 5
+                ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Imóveis', window._allImoveis, 'var(--secondary)')">Ver todos (${imoveisAll.length})</button>`
+                : '';
+            const verTodosDevolutivasBtn = devolutivasAll.length > 5
+                ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Devolutivas', window._allDevolutivas, 'var(--accent)')">Ver todos (${devolutivasAll.length})</button>`
                 : '';
 
             container.innerHTML = `
+                    <div class="card" style="padding: 24px; text-align:center; margin-bottom: 20px;">
+                        <h4 style="color:var(--text-muted); margin-bottom:10px;">Total de Atendimentos</h4>
+                        <h1 id="reportsTotal" style="font-size: 4rem; color:var(--primary); margin:0; line-height:1;">${total}</h1>
+                    </div>
+
                     <div class="reports-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                        
-                        <div class="card" style="padding: 20px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
-                            <h4 style="color:var(--text-muted); margin-bottom:10px;">Total de Atendimentos</h4>
-                            <h1 id="reportsTotal" style="font-size: 3rem; color:var(--primary); margin:0;">${total}</h1>
-                        </div>
-                        
+
                         <div class="card" style="padding: 20px;">
                             <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Atendentes</h4>
-                            ${atendentesHtml}
-                            ${verTodosBtn}
+                            <div style="max-height: 320px; overflow-y: auto; padding-right: 6px;">
+                                ${atendentesHtml}
+                            </div>
+                            ${verTodosAtendentesBtn}
                         </div>
-                        
+
                         <div class="card" style="padding: 20px;">
-                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Top 5 Imóveis</h4>
-                            ${imoveisHtml}
+                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Imóveis</h4>
+                            <div style="max-height: 320px; overflow-y: auto; padding-right: 6px;">
+                                ${imoveisHtml}
+                            </div>
+                            ${verTodosImoveisBtn}
                         </div>
-                        
+
+                        <div class="card" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Ranking de Devolutivas</h4>
+                            <div style="max-height: 320px; overflow-y: auto; padding-right: 6px;">
+                                ${devolutivasHtml}
+                            </div>
+                            ${verTodosDevolutivasBtn}
+                        </div>
+
                     </div>
                 `;
 
             window._allAtendentes = atendentesAll;
+            window._allImoveis = imoveisAll;
+            window._allDevolutivas = devolutivasAll;
             container.dataset.loaded = '1';
             container.classList.remove('reports-refreshing');
             animateReportsTotal(total);

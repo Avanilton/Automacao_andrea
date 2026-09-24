@@ -260,9 +260,20 @@ if ($action === 'add_update') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $content = $_POST['content'] ?? '';
-    
-    $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content) VALUES (?, ?, ?)");
-    $stmt->execute([$task_id, $user_id, $content]);
+    $devolutiva = trim($_POST['devolutiva'] ?? '');
+
+    $allowedDevolutivas = [
+        'Não atendeu', 'Atendeu e desligou', 'Falecido', 'Número inválido',
+        'Caixa postal', 'Retornar depois', 'Recado com terceiro',
+        'Negociação em andamento', 'Promessa de pagamento', 'Acordo fechado',
+        'Pagamento efetuado', 'Sem interesse'
+    ];
+    if (!in_array($devolutiva, $allowedDevolutivas, true)) {
+        jsonResponse(['success' => false, 'error' => 'Devolutiva inválida.'], 400);
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content, devolutiva) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$task_id, $user_id, $content, $devolutiva]);
     
     // Se o status for todo, muda para in_progress automaticamente
     $stmtStatus = $pdo->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ? AND status = 'todo'");
