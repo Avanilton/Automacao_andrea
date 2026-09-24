@@ -32,7 +32,7 @@ set_exception_handler(function($e) {
 // Configurações do Banco de Dados Local
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'bvgarantia_cobrancatask');
-define('DB_USER', getenv('DB_USER') ?: 'bvgarantia_cobranca');
+define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 
 // Configurações do Banco Externo (Condado)
