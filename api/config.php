@@ -13,9 +13,10 @@ if (file_exists($envFile)) {
         if (strpos($line, '=') === false) continue;
         list($key, $value) = explode('=', $line, 2);
         $key = trim($key);
-        $value = trim($value);
+        $value = trim(trim($value), "\"'"); // Remove quotes if present
         if (!getenv($key)) {
             putenv("$key=$value");
+            $_ENV[$key] = $value;
         }
     }
 }
@@ -32,7 +33,7 @@ set_exception_handler(function($e) {
 // Configurações do Banco de Dados Local
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'bvgarantia_cobrancatask');
-define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_USER', getenv('DB_USER') ?: 'bvgarantia_cobranca');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 
 // Configurações do Banco Externo (Condado)
