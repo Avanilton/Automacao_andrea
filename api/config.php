@@ -13,9 +13,10 @@ if (file_exists($envFile)) {
         if (strpos($line, '=') === false) continue;
         list($key, $value) = explode('=', $line, 2);
         $key = trim($key);
-        $value = trim($value);
+        $value = trim(trim($value), "\"'"); // Remove quotes if present
         if (!getenv($key)) {
             putenv("$key=$value");
+            $_ENV[$key] = $value;
         }
     }
 }
@@ -33,14 +34,14 @@ set_exception_handler(function($e) {
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'bvgarantia_cobrancatask');
 define('DB_USER', getenv('DB_USER') ?: 'bvgarantia_cobranca');
-define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_PASS', getenv('DB_PASS') ?: 'L[2u[r%}dY_ScSAk');
 
 // Configurações do Banco Externo (Condado)
 define('CONDADO_DB_HOST', getenv('CONDADO_DB_HOST') ?: 'sistemasnovacorp.com.br');
 define('CONDADO_DB_PORT', getenv('CONDADO_DB_PORT') ?: '5643');
 define('CONDADO_DB_NAME', getenv('CONDADO_DB_NAME') ?: 'novacorpconect');
 define('CONDADO_DB_USER', getenv('CONDADO_DB_USER') ?: 'Intelligence');
-define('CONDADO_DB_PASS', getenv('CONDADO_DB_PASS') ?: '');
+define('CONDADO_DB_PASS', getenv('CONDADO_DB_PASS') ?: '@bv2026@');
 
 function getConnection() {
     try {
