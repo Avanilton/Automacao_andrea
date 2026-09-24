@@ -26,6 +26,12 @@ if ($action === 'list') {
         $like = '%' . $search . '%';
         $params = [$like, $like, $like];
     }
+    // S1: não-admin só vê o que é seu (dono ou compartilhado), igual ao reports.php/list_trash
+    if (getCurrentUserRole() !== 'admin') {
+        $baseWhere .= " AND (assigned_to = ? OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?))";
+        $params[] = $user_id;
+        $params[] = $user_id;
+    }
     // Total (mesmo filtro) para o frontend saber se há mais
     $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM tasks $baseWhere");
     $stmtCount->execute($params);
@@ -84,8 +90,14 @@ if ($action === 'get') {
 
 if ($action === 'list_trash') {
     $pdo = getConnection();
-    $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
-    $tasks = $stmt->fetchAll();
+    if (getCurrentUserRole() === 'admin') {
+        $stmt = $pdo->query("SELECT * FROM tasks WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC");
+        $tasks = $stmt->fetchAll();
+    } else {
+        $stmt = $pdo->prepare("SELECT DISTINCT t.* FROM tasks t LEFT JOIN task_shares s ON s.task_id = t.id AND s.user_id = ? WHERE t.deleted_at IS NOT NULL AND (t.assigned_to = ? OR s.user_id = ?) ORDER BY t.deleted_at DESC");
+        $stmt->execute([$user_id, $user_id, $user_id]);
+        $tasks = $stmt->fetchAll();
+    }
     jsonResponse(['success' => true, 'tasks' => $tasks]);
 }
 
@@ -140,10 +152,16 @@ if ($action === 'create') {
     if(!isset($data['tasks']) || !isset($data['assigned_to'])) {
         jsonResponse(['error' => 'Dados inválidos'], 400);
     }
+
+    // S17: teto anti-DoS — ninguém cria 10 mil de uma vez e estoura timeout/memória
+    if (!is_array($data['tasks']) || count($data['tasks']) < 1 || count($data['tasks']) > 500) {
+        jsonResponse(['success' => false, 'error' => 'Envie entre 1 e 500 tarefas por vez.'], 400);
+    }
     
     $assigned_to = $data['assigned_to'];
     
     $pdo = getConnection();
+    $assigned_to = assertUserExists($pdo, $assigned_to);
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -177,20 +195,30 @@ if ($action === 'import_bulk') {
     if(!isset($data['tasks']) || !is_array($data['tasks'])) {
         jsonResponse(['error' => 'Dados inválidos'], 400);
     }
+
+    // S17: mesmo teto na importação via planilha
+    if (count($data['tasks']) < 1 || count($data['tasks']) > 500) {
+        jsonResponse(['success' => false, 'error' => 'Envie entre 1 e 500 tarefas por vez.'], 400);
+    }
     
     $pdo = getConnection();
+    // Valida todos os responsáveis antes de abrir a transação
+    $assignees = [];
+    foreach ($data['tasks'] as $task) {
+        $assignees[] = assertUserExists($pdo, $task['assigned_to'] ?? $user_id);
+    }
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare("INSERT INTO tasks (property_name, client_code, client_name, value, due_date, assigned_to, created_by, bloco, apto, observations, situacao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
-        foreach($data['tasks'] as $task) {
+        foreach($data['tasks'] as $i => $task) {
             $stmt->execute([
                 $task['property_name'] ?? '',
                 $task['client_code'] ?? '',
                 $task['client_name'] ?? '',
                 $task['value'] ?? 0,
                 !empty($task['due_date']) ? $task['due_date'] : null,
-                $task['assigned_to'] ?? $user_id,
+                $assignees[$i],
                 $user_id,
                 $task['bloco'] ?? null,
                 $task['apto'] ?? null,
@@ -212,6 +240,12 @@ if ($action === 'update_status') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $status = $_POST['status'] ?? '';
+
+    // S2: só aceita os 3 status que o Kanban conhece
+    $allowedStatuses = ['todo', 'in_progress', 'done'];
+    if (!in_array($status, $allowedStatuses, true)) {
+        jsonResponse(['success' => false, 'error' => 'Status inválido.'], 400);
+    }
     
     $stmt = $pdo->prepare("UPDATE tasks SET status = ? WHERE id = ?");
     $stmt->execute([$status, $task_id]);
@@ -226,9 +260,20 @@ if ($action === 'add_update') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $content = $_POST['content'] ?? '';
-    
-    $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content) VALUES (?, ?, ?)");
-    $stmt->execute([$task_id, $user_id, $content]);
+    $devolutiva = trim($_POST['devolutiva'] ?? '');
+
+    $allowedDevolutivas = [
+        'Não atendeu', 'Atendeu e desligou', 'Falecido', 'Número inválido',
+        'Caixa postal', 'Retornar depois', 'Recado com terceiro',
+        'Negociação em andamento', 'Promessa de pagamento', 'Acordo fechado',
+        'Pagamento efetuado', 'Sem interesse'
+    ];
+    if (!in_array($devolutiva, $allowedDevolutivas, true)) {
+        jsonResponse(['success' => false, 'error' => 'Devolutiva inválida.'], 400);
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content, devolutiva) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$task_id, $user_id, $content, $devolutiva]);
     
     // Se o status for todo, muda para in_progress automaticamente
     $stmtStatus = $pdo->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ? AND status = 'todo'");
@@ -243,6 +288,7 @@ if ($action === 'reassign') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $new_user_id = $_POST['user_id'] ?? 0;
+    $new_user_id = assertUserExists($pdo, $new_user_id);
     
     // Update owner and remove from shares if they were shared
     $stmt = $pdo->prepare("UPDATE tasks SET assigned_to = ? WHERE id = ?");
@@ -260,6 +306,7 @@ if ($action === 'share_task') {
     $task_id = $_POST['task_id'] ?? 0;
     canAccessTask($pdo, $task_id);
     $user_id_to_share = $_POST['user_id'] ?? 0;
+    $user_id_to_share = assertUserExists($pdo, $user_id_to_share);
     
     try {
         $stmt = $pdo->prepare("INSERT IGNORE INTO task_shares (task_id, user_id) VALUES (?, ?)");

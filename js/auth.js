@@ -29,7 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let timeout;
             const performLogout = async () => {
                 try {
-                    await fetch('api/auth.php?action=logout');
+                    // S8: logout via POST + CSRF (GET antigo ainda funciona por compatibilidade)
+                    await fetch('api/auth.php?action=logout', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': localStorage.getItem('cobranca_csrf') || '' }
+                    });
                 } catch(e) {}
                 localStorage.removeItem('cobranca_user');
                 localStorage.removeItem('cobranca_csrf');
@@ -94,7 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
-                await fetch('api/auth.php?action=logout');
+                await fetch('api/auth.php?action=logout', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': localStorage.getItem('cobranca_csrf') || '' }
+                });
             } catch(e) {
                 console.warn('Backend logout failed', e);
             }

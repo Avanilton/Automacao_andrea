@@ -14,7 +14,7 @@ function test($name, $expected, $actual) {
     }
 }
 
-function curl($url, $post = null, $cookies = '') {
+function curl($url, $post = null, $cookies = '', $csrf = '') {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, true);
@@ -26,18 +26,26 @@ function curl($url, $post = null, $cookies = '') {
     if ($cookies) {
         curl_setopt($ch, CURLOPT_COOKIE, $cookies);
     }
+    // CSRF: backend novo exige X-CSRF-Token em todo POST logado
+    if ($csrf !== '') {
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["X-CSRF-Token: $csrf"]);
+    }
     $response = curl_exec($ch);
     curl_close($ch);
     return $response;
 }
 
 function extractSessionCookie($response) {
-    preg_match('/Set-Cookie: ([^\r\n]+)/', $response, $matches);
-    if ($matches) {
-        preg_match('/PHPSESSID=([^;]+)/', $matches[1], $m);
-        if ($m) return 'PHPSESSID=' . $m[1];
-    }
+    // Login emite 2 Set-Cookie (ID antigo + ID novo do regenerate); vale o ÚLTIMO
+    preg_match_all('/PHPSESSID=([^;]+)/', $response, $m);
+    if (!empty($m[1])) return 'PHPSESSID=' . end($m[1]);
     return '';
+}
+
+function extractCsrf($response) {
+    $body = getBody($response);
+    $j = json_decode($body, true);
+    return $j['csrf_token'] ?? '';
 }
 
 function getBody($response) {
@@ -77,6 +85,7 @@ $r = curl("$baseUrl/auth.php?action=login", "email=admin@cobrancatask.com&passwo
 $body = getBody($r);
 test("Login admin", '"success":true', $body);
 $sessionCookie = extractSessionCookie($r);
+$adminCsrf = extractCsrf($r);
 echo "  Cookie: " . ($sessionCookie ? "obtido" : "FALHOU") . "\n\n";
 
 // --- TESTE 3: Endpoints COM sessão admin ---
@@ -98,7 +107,7 @@ echo "--- 4. Criar usuário comum e testar restrições ---\n";
 
 // Criar usuário
 $testEmail = 'teste_' . time() . '@test.com';
-$r = curl("$baseUrl/users.php?action=create", "name=TesteUser&email=$testEmail&password=123456", $sessionCookie);
+$r = curl("$baseUrl/users.php?action=create", "name=TesteUser&email=$testEmail&password=123456", $sessionCookie, $adminCsrf);
 $body = getBody($r);
 test("Criar usuário teste", '"success":true', $body);
 
@@ -107,26 +116,40 @@ $r = curl("$baseUrl/auth.php?action=login", "email=$testEmail&password=123456");
 $body = getBody($r);
 test("Login usuário comum", '"success":true', $body);
 $userCookie = extractSessionCookie($r);
+$userCsrf = extractCsrf($r);
 
 // Tentar listar usuários (só admin)
 $r = curl("$baseUrl/users.php?action=list", null, $userCookie);
 test("User comum → users/list (deve negar)", "administradores", getBody($r));
 
 // Tentar criar usuário (só admin)
-$r = curl("$baseUrl/users.php?action=create", "name=Hacker&email=hacker@test.com&password=123456", $userCookie);
+$r = curl("$baseUrl/users.php?action=create", "name=Hacker&email=hacker@test.com&password=123456", $userCookie, $userCsrf);
 test("User comum → users/create (deve negar)", "administradores", getBody($r));
 
 // Tentar salvar settings (só admin)
-$r = curl("$baseUrl/settings.php?action=save", '{"test":true}', $userCookie);
+$r = curl("$baseUrl/settings.php?action=save", '{"test":true}', $userCookie, $userCsrf);
 test("User comum → settings/save (deve negar)", "administradores", getBody($r));
 
 // Deletar usuário teste (só admin)
-$r = curl("$baseUrl/users.php?action=delete", "id=99999", $userCookie);
+$r = curl("$baseUrl/users.php?action=delete", "id=99999", $userCookie, $userCsrf);
 test("User comum → users/delete (deve negar)", "administradores", getBody($r));
 
 // Logar como admin e limpar
 $r = curl("$baseUrl/auth.php?action=login", "email=admin@cobrancatask.com&password=password");
 $adminCookie = extractSessionCookie($r);
+$adminCsrf2 = extractCsrf($r);
+// Limpeza: apaga o usuário teste criado acima (evita lixo no banco)
+preg_match('/teste_\d+@test\.com/', $testEmail, $mm);
+if ($testEmail) {
+    $rl = curl("$baseUrl/users.php?action=list", null, $adminCookie);
+    $uj = json_decode(getBody($rl), true);
+    foreach (($uj['users'] ?? []) as $u) {
+        if (($u['email'] ?? '') === $testEmail) {
+            curl("$baseUrl/users.php?action=delete", "id=" . $u['id'], $adminCookie, $adminCsrf2);
+            echo "  Limpeza: usuário $testEmail removido.\n";
+        }
+    }
+}
 
 echo "\n";
 

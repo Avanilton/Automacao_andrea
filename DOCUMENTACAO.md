@@ -1,7 +1,7 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.4.0  
-**Última atualização:** 18/09/2026
+**Versão:** 1.5.1  
+**Última atualização:** 24/09/2026
 
 ---
 
@@ -159,8 +159,10 @@ Arquivo principal da aplicação (2563 linhas). Contém toda a lógica do fronte
 
 **Relatórios:**
 - `loadRelatorios()` — carrega dados dos relatórios
-- `renderRankingRow()` — renderiza linhas de ranking
-- `openRankingModal()` — abre modal com ranking completo
+- `renderRankingBar(name, total, percent, index, color)` — padrão único dos 3 rankings (posição + nome + `%` + `(total)` + barra de progresso, com `escapeHtml`)
+- `renderRankingRow()` — wrapper legado, delega para `renderRankingBar`
+- `getRankingName()` — retorna `atendente || imovel || devolutiva`
+- `openRankingModal()` — abre modal com ranking completo no mesmo padrão barra + % (título escapado, tolera lista nula)
 
 **Configurações:**
 - `saveProfile()` — salva dados do perfil
@@ -217,9 +219,10 @@ Middleware de autenticação e autorização (64 linhas):
 - `requireAuth()` — bloqueia acesso se não houver sessão (HTTP 401)
 - `requireAdmin()` — bloqueia acesso se o usuário não for admin (HTTP 403)
 - `requireCsrf()` — bloqueia POST sem `X-CSRF-Token` válido (HTTP 403, compara com `hash_equals`)
-- `generateCsrfToken()` — gera token aleatório (`random_bytes`) por sessão
+- `generateCsrfToken()` — gera token aleatório (`random_bytes`) por sessão; **v1.5.0:** login descarta o antigo e gera um novo
 - `getCurrentUserId()` — retorna o ID do usuário logado (da sessão)
 - `getCurrentUserRole()` — retorna o papel do usuário logado
+- Cookie de sessão **v1.5.0:** `httponly=true`, `samesite=Lax`, `secure` automático em HTTPS (via `session_set_cookie_params` antes do `start`)
 - `canAccessTask($pdo, $taskId)` — admin passa; demais só se forem `assigned_to` ou estiverem em `task_shares` (403 caso contrário)
 
 > **Todos os endpoints protegidos devem incluir este arquivo no início.**
@@ -229,12 +232,12 @@ Middleware de autenticação e autorização (64 linhas):
 #### `api/auth.php`
 API de autenticação (74 linhas):
 
-| Ação | Método | Descrição |
-|------|--------|-----------|
-| `?action=login` | POST | Valida e-mail e senha, regenera ID da sessão, retorna dados do usuário + `csrf_token` |
-| `?action=logout` | GET | Destroi a sessão |
-| `?action=check` | GET | Verifica se a sessão é válida |
-| `?action=change_password` | POST | Troca senha (exige `requireCsrf()`) |
+| Ação | Método | Acesso | Descrição |
+|------|--------|--------|-----------|
+| `?action=login` | POST | Público | Valida e-mail e senha, rate-limit (5 erros/15min = bloqueio 5min, HTTP 429 + delay 1s), regenera ID da sessão + CSRF novo, retorna dados do usuário + `csrf_token` |
+| `?action=logout` | POST (GET legado) | Logado | POST exige `X-CSRF-Token`; limpa `$_SESSION`, expira cookie `PHPSESSID` e destrói sessão |
+| `?action=check` | GET | Logado | Retorna `{id, role}` se a sessão vale (inclui timeout 10min); 401 se expirada |
+| `?action=change_password` | POST | Logado | Troca senha (exige `requireCsrf()`) |
 
 ---
 
@@ -243,7 +246,7 @@ API de tarefas (285 linhas):
 
 | Ação | Método | Acesso | Descrição |
 |------|--------|--------|-----------|
-| `?action=list` | GET | Logado | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`) |
+| `?action=list` | GET | Logado | Lista tarefas com paginação (`limit`, `offset` ou `page`, `search`; retorna `total`/`hasMore`). **v1.5.0:** não-admin só recebe `assigned_to=self` ou compartilhadas (`task_shares`) |
 | `?action=get` | GET | Logado | Busca uma tarefa por ID |
 | `?action=create` | POST | Logado | Cria tarefas em lote |
 | `?action=update_status` | POST | Logado | Atualiza status (todo/in_progress/done) |
@@ -259,7 +262,7 @@ API de tarefas (285 linhas):
 | `?action=import_bulk` | POST | Logado | Importa tarefas em lote (via planilha) |
 | `?action=list_trash` | GET | Logado | Lista tarefas excluídas |
 
-> **Segurança (v1.3.0):** Todos os endpoints exigem sessão válida. Todo POST exige `requireCsrf()`. `get`, `soft_delete`, `restore`, `force_delete`, `update_status`, `add_update`, `reassign`, `share_task`, `unshare_task` e `update_details` exigem `canAccessTask()` (dono, compartilhado ou admin). `truncate_tasks` é restrito a admin.
+> **Segurança (v1.3.0–v1.5.0):** Todos os endpoints exigem sessão válida. Todo POST exige `requireCsrf()`. `get`, `soft_delete`, `restore`, `force_delete`, `update_status`, `add_update`, `reassign`, `share_task`, `unshare_task` e `update_details` exigem `canAccessTask()` (dono, compartilhado ou admin). `list` filtra por dono/compartilhado p/ não-admin (v1.5.0). `update_status` só aceita `todo/in_progress/done` (v1.5.0). `truncate_tasks` é restrito a admin.
 
 ---
 
@@ -269,10 +272,10 @@ API de usuários (145 linhas):
 | Ação | Método | Acesso | Descrição |
 |------|--------|--------|-----------|
 | `?action=list` | GET | Admin | Lista todos os usuários |
-| `?action=create` | POST | Admin | Cria novo usuário (role sempre `user`) |
-| `?action=update` | POST | Admin | Atualiza dados do usuário (incluindo role) |
+| `?action=create` | POST | Admin | Cria novo usuário (role sempre `user`, e-mail com formato válido) |
+| `?action=update` | POST | Admin | Atualiza dados (valida formato + duplicidade de e-mail, whitelist `admin/user`, ID 1 nunca rebaixado) |
 | `?action=delete` | POST | Admin | Exclui usuário (ID 1 protegido) |
-| `?action=update_profile` | POST | Qualquer logado | Atualiza próprio nome/e-mail (não altera role) |
+| `?action=update_profile` | POST | Qualquer logado | Atualiza próprio nome/e-mail (valida formato + duplicidade, não altera role) |
 | `?action=update_avatar` | POST | Qualquer logado | Atualiza foto do próprio perfil (só admin pode passar `id` de outro) |
 
 > **Segurança:** As actions `list`, `create`, `update` e `delete` exigem sessão de admin. A action `update_profile` permite que o próprio usuário edite seus dados sem poder alterar seu cargo.
@@ -280,11 +283,13 @@ API de usuários (145 linhas):
 ---
 
 #### `api/reports.php`
-API de relatórios (63 linhas):
+API de relatórios (90 linhas):
 
 - Retorna total de atendimentos
-- Ranking de atendentes (top 5 + lista completa)
-- Ranking de imóveis (top 5)
+- Ranking de atendentes (top 5 + lista completa + `percent`)
+- Ranking de imóveis (top 5 + lista completa + `percent`; sem `LIMIT` no SQL, corte via `array_slice`)
+- Ranking de devolutivas (top 5 + lista completa + `percent`)
+- Padrão único: todo ranking retorna `{top5, *_all}` com `total` + `percent`; frontend desenha barra + % + botão "Ver todos" nos 3
 - Filtra dados por papel do usuário (admin vê tudo, usuário só as suas)
 
 ---
@@ -295,7 +300,7 @@ API de configurações (31 linhas):
 | Ação | Método | Acesso | Descrição |
 |------|--------|--------|-----------|
 | `?action=get` | GET | Logado | Lê permissões do `settings.json` |
-| `?action=save` | POST | **Admin** | Salva permissões no `settings.json` (exige `requireCsrf()`) |
+| `?action=save` | POST | **Admin** | Salva permissões no `settings.json` (exige `requireCsrf()`; v1.5.0 valida JSON e grava só as 7 chaves booleanas conhecidas) |
 
 ---
 
@@ -385,7 +390,7 @@ Schema do banco `bvgarantia_cobrancatask`:
 | `users` | Usuários do sistema (id, name, email, password, role, avatar) |
 | `tasks` | Tarefas de cobrança (property_name, client_name, status, assigned_to, etc.) |
 | `task_shares` | Compartilhamento de tarefas entre usuários |
-| `task_updates` | Histórico de atendimentos de cada tarefa |
+| `task_updates` | Histórico de atendimentos de cada tarefa (inclui `devolutiva` VARCHAR(100), ver `migrate_devolutiva.php`) |
 | `tickets` | Chamados de suporte |
 | `cache_imoveis` | Cache de imóveis do Condado |
 | `cache_clientes` | Cache de clientes do Condado |
@@ -510,6 +515,9 @@ Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware 
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.5.1 | 24/09/2026 | Padronização dos 3 rankings de relatórios (barra + % + Ver todos): `reports.php` com `percent` nos 3 + retorno `{top5, *_all}` (Imóveis sem `LIMIT`, corte via `array_slice`); `app.js` com `renderRankingBar`/`getRankingName` únicos, `openRankingModal` no mesmo padrão (título escapado, tolera lista nula), 3 cards gêmeos com scroll 320px; `task_updates.devolutiva` (whitelist de 12 valores em `tasks.php`, select em `dashboard.html`, coluna em `database.sql` + `migrate_devolutiva.php`) |
+| 1.5.0 | 21/09/2026 | Segurança lista/escrita: `tasks:list` filtra por dono/compartilhado p/ não-admin, `update_status` com whitelist (todo/in_progress/done), `settings:save` valida JSON + 7 chaves booleanas, `users:create/update/update_profile` validam formato e duplicidade de e-mail + whitelist de role + proteção ID 1; Auth/sessão: rate-limit de login (5 erros/15min = bloqueio 5min + 429 + sleep 1s), nova `auth:check`, login regenera CSRF e grava `last_activity`, `logout` via POST+CSRF com limpeza total (sessão+cookie), cookie `httponly`+`samesite=Lax`+`secure` em HTTPS, frontend `auth.js` com logout POST |
+| 1.4.1 | 18/09/2026 | `list_trash` filtra por dono/compartilhado p/ não-admin, avatar por MIME real + limite 2MB, `assertUserExists` em create/import/reassign/share, timeout de inatividade (10min) no servidor via `last_activity`, `change_password` usa `getCurrentUserId` |
 | 1.4.0 | 18/09/2026 | Esqueleto de integração externa: `api/external_sync.php` (push_activity em JSON via cURL), `syncActivityToExternal()` no frontend após add_update, config via `EXTERNAL_API_URL`/`TOKEN` no `.env`, correção XSS na lista de atendimentos |
 | 1.3.0 | 18/09/2026 | Correções high: credenciais via `.env`, erros genéricos ao cliente (log no servidor), CSRF em todo POST, `escapeHtml()` no frontend, `canAccessTask()` anti-IDOR, avatar usa ID da sessão, `sync_condado.php` restrito a admin, `.htaccess` bloqueando testes/debug/`.env` |
 | 1.2.0 | 18/09/2026 | Correções de segurança: middleware de autenticação (auth_middleware.php), todos os endpoints protegidos com requireAuth/requireAdmin, removido fallback admin em tasks/reports/condado, nova action update_profile para autoatendimento, tickets usa dados da sessão, testes automatizados de segurança (test_security.php) |
