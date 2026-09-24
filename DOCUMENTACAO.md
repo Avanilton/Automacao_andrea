@@ -1,6 +1,6 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.5.1  
+**Versão:** 1.5.2  
 **Última atualização:** 24/09/2026
 
 ---
@@ -93,7 +93,7 @@ Automacao_andrea-main/
 Página inicial (landing page) com apresentação do sistema. Possui link para login e botão de ação. Carrega o `css/style.css` e o favicon.
 
 #### `login.html`
-Página de autenticação. Formulário com campos de e-mail e senha. Redireciona para `dashboard.html` após login bem-sucedido. Carrega `js/auth.js` e `js/theme.js`.
+Página de autenticação. Formulário com campos de e-mail e senha. Redireciona para `dashboard.html` após login bem-sucedido. Falhas (senha errada, bloqueio 429, erro de rede) exibem a caixa `#loginMessage.message-box.error` em vermelho. Carrega `js/auth.js` e `js/theme.js`.
 
 #### `dashboard.html`
 Dashboard principal e mais importante do sistema. É uma **SPA (Single Page Application)** que carrega todas as visualizações dinamicamente via JavaScript. Contém:
@@ -182,9 +182,10 @@ Arquivo principal da aplicação (2563 linhas). Contém toda a lógica do fronte
 ---
 
 #### `js/auth.js`
-Gerencia autenticação e sessão (106 linhas):
+Gerencia autenticação e sessão (115 linhas):
 
 - `handleLogin()` — envia formulário de login para `api/auth.php`, salva `cobranca_user` e `cobranca_csrf` no localStorage
+- Feedback de erro (v1.5.2): ao falhar, aplica `message-box error` em `#loginMessage` (o CSS esconde sem a classe); "Autenticando..." usa `display:block` neutro; erro/bloqueio/rede usam a classe `.error` com a mensagem do backend
 - `checkSession()` — verifica se o usuário está logado
 - `handleLogout()` — limpa `cobranca_user` e `cobranca_csrf`, redireciona para login
 - **Timeout de 10 minutos** — logout automático por inatividade (limpa user + token CSRF)
@@ -515,6 +516,7 @@ Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware 
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.5.2 | 24/09/2026 | Feedback de erro no login: `js/auth.js` aplica `message-box error` em `#loginMessage` ao falhar (antes escrevia o texto num elemento com `display:none`, sem feedback visual); "Autenticando..." neutro com `display:block`, erros usam a classe `.error` do `css/style.css` |
 | 1.5.1 | 24/09/2026 | Padronização dos 3 rankings de relatórios (barra + % + Ver todos): `reports.php` com `percent` nos 3 + retorno `{top5, *_all}` (Imóveis sem `LIMIT`, corte via `array_slice`); `app.js` com `renderRankingBar`/`getRankingName` únicos, `openRankingModal` no mesmo padrão (título escapado, tolera lista nula), 3 cards gêmeos com scroll 320px; `task_updates.devolutiva` (whitelist de 12 valores em `tasks.php`, select em `dashboard.html`, coluna em `database.sql` + `migrate_devolutiva.php`) |
 | 1.5.0 | 21/09/2026 | Segurança lista/escrita: `tasks:list` filtra por dono/compartilhado p/ não-admin, `update_status` com whitelist (todo/in_progress/done), `settings:save` valida JSON + 7 chaves booleanas, `users:create/update/update_profile` validam formato e duplicidade de e-mail + whitelist de role + proteção ID 1; Auth/sessão: rate-limit de login (5 erros/15min = bloqueio 5min + 429 + sleep 1s), nova `auth:check`, login regenera CSRF e grava `last_activity`, `logout` via POST+CSRF com limpeza total (sessão+cookie), cookie `httponly`+`samesite=Lax`+`secure` em HTTPS, frontend `auth.js` com logout POST |
 | 1.4.1 | 18/09/2026 | `list_trash` filtra por dono/compartilhado p/ não-admin, avatar por MIME real + limite 2MB, `assertUserExists` em create/import/reassign/share, timeout de inatividade (10min) no servidor via `last_activity`, `change_password` usa `getCurrentUserId` |

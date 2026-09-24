@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
+            loginMessage.className = 'message-box';
+            loginMessage.style.display = 'block';
             loginMessage.textContent = 'Autenticando...';
             loginMessage.style.color = 'var(--text-muted)';
             
@@ -85,12 +87,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     window.location.href = 'dashboard.html';
                 } else {
+                    loginMessage.style.display = '';
+                    loginMessage.style.color = '';
+                    loginMessage.className = 'message-box error';
                     loginMessage.textContent = data.error || data.message || 'Erro no login.';
-                    loginMessage.style.color = '#ef4444';
                 }
             } catch (err) {
+                loginMessage.style.display = '';
+                loginMessage.style.color = '';
+                loginMessage.className = 'message-box error';
                 loginMessage.textContent = 'Erro ao conectar ao servidor.';
-                loginMessage.style.color = '#ef4444';
             }
         });
     }
