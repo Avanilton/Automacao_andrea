@@ -517,7 +517,7 @@ function handleTasksImport(e) {
 
 function processExcelFile(file) {
     const reader = new FileReader();
-    reader.onload = function(evt) {
+    reader.onload = async function(evt) {
         const data = evt.target.result;
         try {
             const workbook = XLSX.read(data, { type: 'binary' });
@@ -609,7 +609,7 @@ function processExcelFile(file) {
             }
 
             // Enviar para o backend
-            if (confirm(`Deseja importar ${parsedTasks.length} tarefas da planilha?`)) {
+            if (await window.confirmModal(`Deseja importar ${parsedTasks.length} tarefas da planilha?`, 'Importar')) {
                 sendImportRequest(parsedTasks);
             }
 
@@ -848,7 +848,7 @@ window.changePassword = async function () {
 };
 
 window.deleteUser = async function (id) {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+    if (!(await window.confirmModal('Tem certeza que deseja excluir este usuário?', 'Excluir'))) return;
 
     try {
         const formData = new FormData();
@@ -898,7 +898,7 @@ window.loadLixeira = async function () {
         const data = await res.json();
 
         if (data.tasks.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Lixeira vazia.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4">' + window.emptyStateHtml('✨', 'Lixeira vazia', 'Nada apagado por aqui. Tudo certo!', null, null) + '</td></tr>';
             return;
         }
 
@@ -925,7 +925,7 @@ window.loadLixeira = async function () {
 }
 
 window.restoreTrash = async function (id) {
-    if (!confirm('Tem certeza que deseja restaurar este item?')) return;
+    if (!(await window.confirmModal('Tem certeza que deseja restaurar este item?', 'Restaurar'))) return;
     try {
         const formData = new FormData();
         formData.append('task_id', id);
@@ -941,7 +941,7 @@ window.restoreTrash = async function (id) {
 }
 
 window.forceDeleteTrash = async function (id) {
-    if (confirm('Tem certeza que deseja excluir PERMANENTEMENTE? Esta ação não pode ser desfeita.')) {
+    if (await window.confirmModal('Tem certeza que deseja excluir PERMANENTEMENTE? Esta ação não pode ser desfeita.', 'Excluir para sempre')) {
         try {
             const formData = new FormData();
             formData.append('task_id', id);
@@ -960,8 +960,8 @@ window.emptyTrash = async function () {
 }
 
 // --- Delete Column ---
-window.deleteColumn = function (status_key) {
-    if (confirm('Deseja excluir esta coluna inteira? Ela será movida para a Lixeira.')) {
+window.deleteColumn = async function (status_key) {
+    if (await window.confirmModal('Deseja excluir esta coluna inteira? Ela será movida para a Lixeira.', 'Excluir coluna')) {
         const col = localColumns.find(c => c.status_key === status_key);
         if (col) {
             // Add to trash mock
@@ -1351,7 +1351,7 @@ window.loadTarefas = async function (reset = true) {
     }
 
     if (window.currentLoadedTasks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma tarefa encontrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">' + window.emptyStateHtml('📋', 'Nenhuma tarefa por aqui', 'Crie a primeira tarefa ou ajuste a busca.', 'Criar tarefa', 'openCreateTaskModal()') + '</td></tr>';
         updateTarefasFooter();
         return;
     }
@@ -1427,7 +1427,7 @@ window.filterKanban = function() {
 }
 
 window.truncateAllData = async function() {
-    if (!confirm('ATENÇÃO: Isto apagará TODAS as tarefas e dados do Kanban. Você tem certeza que deseja continuar?')) {
+    if (!(await window.confirmModal('ATENÇÃO: Isto apagará TODAS as tarefas e dados do Kanban. Você tem certeza que deseja continuar?', 'Apagar tudo'))) {
         return;
     }
     
@@ -1447,7 +1447,7 @@ window.truncateAllData = async function() {
 }
 
 window.deleteServerTask = async function (id) {
-    if (confirm("Tem certeza que deseja mover esta tarefa para a Lixeira?")) {
+    if (await window.confirmModal('Tem certeza que deseja mover esta tarefa para a Lixeira?', 'Mover para Lixeira')) {
         try {
             const formData = new FormData();
             formData.append('task_id', id);
@@ -1493,7 +1493,9 @@ function renderKanbanColumn(statusKey) {
     const remaining = all.length - visible.length;
     const colEl = document.querySelector(`#col-${statusKey} .column-cards`);
     if (!colEl) return;
-    colEl.innerHTML = visible.join('');
+    colEl.innerHTML = visible.length === 0
+        ? window.emptyStateHtml('📌', 'Coluna vazia', 'Arraste um card para cá.', null, null)
+        : visible.join('');
     const oldMore = document.querySelector(`#morediv-${statusKey}`);
     if (oldMore) oldMore.remove();
     const colDiv = document.getElementById('col-' + statusKey);
@@ -1609,8 +1611,8 @@ window.loadKanbanCards = async function (forceReload = false) {
     Object.keys(window._kanbanGrouped).forEach(renderKanbanColumn);
 }
 
-window.promptAddColumn = function () {
-    const title = prompt('Digite o nome da nova coluna:');
+window.promptAddColumn = async function () {
+    const title = await window.promptModal('Nova coluna', 'Digite o nome da nova coluna');
     if (!title) return;
 
     const status_key = title.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -1861,7 +1863,7 @@ window.openTaskDetails = async function (taskId) {
     const btnDeleteTask = document.getElementById('btnDeleteTask');
     if (btnDeleteTask) {
         btnDeleteTask.onclick = async () => {
-            if (confirm('Tem certeza que deseja excluir esta tarefa? Ela será enviada para a Lixeira.')) {
+            if (await window.confirmModal('Tem certeza que deseja excluir esta tarefa? Ela será enviada para a Lixeira.', 'Mover para Lixeira')) {
                 try {
                     const formData = new FormData();
                     formData.append('task_id', taskId);
@@ -2033,8 +2035,8 @@ existingCheckboxes.forEach(cb => {
 // 2. Add Label
 const btnAddLabel = document.getElementById('btnAddLabel');
 if (btnAddLabel) {
-    btnAddLabel.onclick = () => {
-        const text = prompt("Digite o nome da etiqueta (ex: Importante):");
+    btnAddLabel.onclick = async () => {
+        const text = await window.promptModal('Nova etiqueta', 'Digite o nome da etiqueta (ex: Importante)');
         if (text) {
             const colors = ['#8B5CF6', '#10B981', '#EC4899', '#F97316'];
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -2043,7 +2045,7 @@ if (btnAddLabel) {
             const span = document.createElement('span');
             span.className = 'label';
             span.style.backgroundColor = color;
-            span.innerHTML = `${text} &times;`;
+            span.innerHTML = `${escapeHtml(text)} &times;`;
             span.onclick = function () {
                 this.remove();
                 window.logActivity(`Etiqueta removida: ${text}`);
@@ -2069,6 +2071,12 @@ if (btnSaveUpdate) {
             if (devolSelect) devolSelect.focus();
             return;
         }
+
+        // Trava o botão durante o envio (evita registros duplicados)
+        const originalSaveHtml = btnSaveUpdate.innerHTML;
+        btnSaveUpdate.disabled = true;
+        btnSaveUpdate.classList.add('btn-loading');
+        btnSaveUpdate.innerHTML = '<span class="spin">↻</span> Registrando...';
 
         // Render local mockup list
         const updatesList = document.getElementById('taskUpdatesList');
@@ -2097,15 +2105,23 @@ if (btnSaveUpdate) {
             formData.append('content', content);
             formData.append('devolutiva', devolutiva);
 
-            await fetch('api/tasks.php?action=add_update', {
+            const resUpdate = await fetch('api/tasks.php?action=add_update', {
                 method: 'POST',
                 body: formData
             });
+            const dataUpdate = await resUpdate.json().catch(() => null);
+            if (dataUpdate && dataUpdate.first_devolutiva) {
+                if (typeof showToast === 'function') showToast('🎉 Primeira devolutiva registrada! Continue assim.', 'success');
+            }
 
             // ESQUELETO: replica a descrição da atividade para o sistema externo (não bloqueia a UI)
             syncActivityToExternal(window.currentOpenTaskId, content);
         } catch (e) {
             console.log('API não conectada, registrado apenas visualmente.', e);
+        } finally {
+            btnSaveUpdate.disabled = false;
+            btnSaveUpdate.classList.remove('btn-loading');
+            btnSaveUpdate.innerHTML = originalSaveHtml;
         }
     };
 } // <--- ESTA CHAVE ESTAVA FALTANDO!
@@ -2192,6 +2208,82 @@ window.openRankingModal = function (title, items, color) {
     modal.classList.remove('hidden');
 };
 
+// Fábrica de estados vazios (molde único para Tarefas/Lixeira/Kanban).
+// Uso: window.emptyStateHtml('📋', 'Título', 'Texto', 'Botão', "acao()") — botão opcional (null, null).
+window.emptyStateHtml = function (icon, title, text, btnLabel, btnAction) {
+    return `<div style="text-align:center; padding: 22px 12px;">
+        <div style="font-size: 2.2rem; line-height: 1; margin-bottom: 10px;">${icon}</div>
+        <p style="font-weight: 600; margin: 0 0 6px;">${escapeHtml(title)}</p>
+        <p class="text-muted" style="font-size: 0.85rem; margin: 0 0 14px;">${escapeHtml(text)}</p>
+        ${btnLabel ? `<button class="btn-primary btn-sm" style="width:100%;" onclick="${btnAction}">${escapeHtml(btnLabel)}</button>` : ''}
+    </div>`;
+};
+
+// Confirmação padronizada (substitui o confirm() nativo do navegador).
+// Uso: const ok = await window.confirmModal('Mensagem?', 'Texto do botão'); if (ok) { ... }
+window.confirmModal = function (message, confirmLabel) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('modalOverlay');
+        if (!overlay) { resolve(window.confirm(message)); return; }
+        const box = document.createElement('div');
+        box.className = 'modal';
+        box.style.maxWidth = '420px';
+        box.innerHTML = `
+            <div class="modal-header"><h3>Confirmação</h3></div>
+            <div class="modal-body"><p>${escapeHtml(message)}</p></div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn-secondary" id="cfCancel">Cancelar</button>
+                <button class="btn-primary" id="cfOk">${escapeHtml(confirmLabel || 'Confirmar')}</button>
+            </div>`;
+        const close = (value) => {
+            box.remove();
+            overlay.classList.add('hidden');
+            resolve(value);
+        };
+        box.querySelector('#cfCancel').onclick = () => close(false);
+        box.querySelector('#cfOk').onclick = () => close(true);
+        overlay.appendChild(box);
+        overlay.classList.remove('hidden');
+    });
+};
+
+// Entrada de texto padronizada (substitui o prompt() nativo do navegador).
+// Uso: const nome = await window.promptModal('Título?', 'Exemplo...'); if (nome) { ... }
+// Devolve null se cancelar ou vazio.
+window.promptModal = function (message, placeholder) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('modalOverlay');
+        if (!overlay) { resolve(window.prompt(message)); return; }
+        const box = document.createElement('div');
+        box.className = 'modal';
+        box.style.maxWidth = '420px';
+        box.innerHTML = `
+            <div class="modal-header"><h3>${escapeHtml(message)}</h3></div>
+            <div class="modal-body">
+                <input id="pmInput" class="form-control" style="width:100%; box-sizing:border-box;" placeholder="${escapeHtml(placeholder || '')}" maxlength="60">
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn-secondary" id="pmCancel">Cancelar</button>
+                <button class="btn-primary" id="pmOk">Adicionar</button>
+            </div>`;
+        const input = box.querySelector('#pmInput');
+        const close = (value) => {
+            box.remove();
+            overlay.classList.add('hidden');
+            resolve(value);
+        };
+        box.querySelector('#pmCancel').onclick = () => close(null);
+        box.querySelector('#pmOk').onclick = () => close(input.value.trim() || null);
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') box.querySelector('#pmOk').click();
+            if (e.key === 'Escape') close(null);
+        };
+        overlay.appendChild(box);
+        overlay.classList.remove('hidden');
+        setTimeout(() => input.focus(), 0);
+    });
+};
+
 window.loadRelatorios = async function () {
     const container = document.getElementById('reportsContainer');
     if (!container) return;
@@ -2238,7 +2330,14 @@ window.loadRelatorios = async function () {
 
             const atendentesHtml = buildRankingHtml(atendentes, 'var(--primary)', 'Nenhum dado.');
             const imoveisHtml = buildRankingHtml(imoveis, 'var(--secondary)', 'Nenhum dado.');
-            const devolutivasHtml = buildRankingHtml(devolutivas, 'var(--accent)', 'Nenhuma devolutiva registrada.');
+            const devolutivasHtml = (devolutivas.length === 0 && devolutivasAll.length === 0)
+                ? `<div style="text-align:center; padding: 18px 10px;">
+                    <div style="font-size: 2.2rem; line-height: 1; margin-bottom: 10px;">📝</div>
+                    <p style="font-weight: 600; margin: 0 0 6px;">Nenhuma devolutiva ainda</p>
+                    <p class="text-muted" style="font-size: 0.85rem; margin: 0 0 14px;">Seja o primeiro a registrar! Ao concluir um atendimento, escolha a devolutiva e apareça aqui.</p>
+                    <button class="btn-primary btn-sm" style="width:100%;" onclick="loadView('tarefas')">Ir para Tarefas</button>
+                </div>`
+                : buildRankingHtml(devolutivas, 'var(--accent)', 'Nenhuma devolutiva registrada.');
 
             const verTodosAtendentesBtn = atendentesAll.length > 5
                 ? `<button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="window.openRankingModal('Ranking Completo de Atendentes', window._allAtendentes, 'var(--primary)')">Ver todos (${atendentesAll.length})</button>`

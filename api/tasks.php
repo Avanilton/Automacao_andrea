@@ -274,12 +274,17 @@ if ($action === 'add_update') {
 
     $stmt = $pdo->prepare("INSERT INTO task_updates (task_id, user_id, content, devolutiva) VALUES (?, ?, ?, ?)");
     $stmt->execute([$task_id, $user_id, $content, $devolutiva]);
+
+    // Incentivo: avisa se foi a primeira devolutiva do usuário (frontend celebra)
+    $stmtFirst = $pdo->prepare("SELECT COUNT(*) FROM task_updates WHERE user_id = ? AND devolutiva IS NOT NULL AND devolutiva <> ''");
+    $stmtFirst->execute([$user_id]);
+    $isFirstDevolutiva = ((int)$stmtFirst->fetchColumn() === 1);
     
     // Se o status for todo, muda para in_progress automaticamente
     $stmtStatus = $pdo->prepare("UPDATE tasks SET status = 'in_progress' WHERE id = ? AND status = 'todo'");
     $stmtStatus->execute([$task_id]);
     
-    jsonResponse(['success' => true]);
+    jsonResponse(['success' => true, 'first_devolutiva' => $isFirstDevolutiva]);
 }
 
 if ($action === 'reassign') {

@@ -60,10 +60,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
+            // Trava o botão durante o envio (evita duplo clique)
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('btn-loading');
+                submitBtn.innerHTML = '<span class="spin">↻</span> Entrando...';
+            }
+
+            loginMessage.className = 'message-box';
+            loginMessage.style.display = 'block';
             loginMessage.textContent = 'Autenticando...';
             loginMessage.style.color = 'var(--text-muted)';
             
@@ -91,6 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 loginMessage.textContent = 'Erro ao conectar ao servidor.';
                 loginMessage.style.color = '#ef4444';
+            } finally {
+                // Sempre destrava no final (no sucesso a página redireciona antes)
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('btn-loading');
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
             }
         });
     }
