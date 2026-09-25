@@ -482,6 +482,8 @@ function loadView(viewName) {
         if (targetView.isFirstLoad) loadTickets();
     }
 }
+// Expõe para onclick inline (a função vive dentro do DOMContentLoaded)
+window.loadView = loadView;
 
 // Event Delegation para o botão "Criar Tarefas" que é injetado dinamicamente
 document.addEventListener('click', (e) => {
@@ -1046,6 +1048,8 @@ function openCreateTaskModal() {
         };
     }
 }
+// Expõe para onclick inline (a função vive dentro do DOMContentLoaded)
+window.openCreateTaskModal = openCreateTaskModal;
 
 async function fetchCondadoData(searchTerm = '') {
     const container = document.getElementById('condadoDataContainer');
