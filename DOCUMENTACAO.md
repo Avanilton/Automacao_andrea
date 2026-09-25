@@ -1,7 +1,7 @@
 # Documentação do Projeto Cobrança Task
 
-**Versão:** 1.5.4  
-**Última atualização:** 24/09/2026
+**Versão:** 1.5.5  
+**Última atualização:** 25/09/2026
 
 ---
 
@@ -515,6 +515,7 @@ Todos os endpoints da API (exceto `login`) exigem sessão válida. O middleware 
 
 | Versão | Data | Alterações |
 |--------|------|------------|
+| 1.5.5 | 25/09/2026 | Fix botão "Ir para Tarefas": `loadView` e `openCreateTaskModal` viviam presas no closure do `DOMContentLoaded` (invisíveis para `onclick` inline) — expostas via `window.loadView`/`window.openCreateTaskModal`; `dashboard.html` passa a `app.js?v=13` (cache-busting) |
 | 1.5.4 | 24/09/2026 | Usabilidade: loading anti-duplo-clique nos botões Entrar e Registrar atendimento (`disabled` + `btn-loading`, destrava no `finally`); `confirmModal()` próprio substituindo os 8 `confirm()` nativos; `promptModal()` substituindo os 2 `prompt()` (nova coluna, nova etiqueta + fix XSS na etiqueta); `emptyStateHtml()` único para Tarefas/Lixeira/Kanban; incentivo à devolutiva (estado vazio convidativo + flag `first_devolutiva` no `add_update` com toast 🎉); `database.sql` ganha tabela `tickets`; `.vscode/` no `.gitignore` |
 | 1.5.3 | 24/09/2026 | Login em produção: `api/config.php` remove aspas dos valores do `.env` (`trim($value), "\"'"`) e espelha em `$_ENV`, default `DB_USER` volta para `bvgarantia_cobranca`; `login.html` sem `required` (validação no backend) + botão `#btnEntrar`, removido link "Acessar o site"; limpeza no `index.html` |
 | 1.5.1 | 24/09/2026 | Padronização dos 3 rankings de relatórios (barra + % + Ver todos): `reports.php` com `percent` nos 3 + retorno `{top5, *_all}` (Imóveis sem `LIMIT`, corte via `array_slice`); `app.js` com `renderRankingBar`/`getRankingName` únicos, `openRankingModal` no mesmo padrão (título escapado, tolera lista nula), 3 cards gêmeos com scroll 320px; `task_updates.devolutiva` (whitelist de 12 valores em `tasks.php`, select em `dashboard.html`, coluna em `database.sql` + `migrate_devolutiva.php`) |
